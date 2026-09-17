@@ -67,10 +67,51 @@ export function makeGhostShellMaterial() {
         // on the cheeks; only a faint rim remains, so the envelope is nearly invisible
         // thin outline: the original's edge dips ~16/255 over 2 px, the body sits 5-7/255 below the page
         // the rim is swept by the same front as the blueprint lines; uRimFloor keeps a faint outline between pulses
-        float shellA = uShell + 0.20 * vFresnel * (uRimFloor + (1.0 - uRimFloor) * pulse);
+        float shellA = uShell; // the outline is now the inverted hull (makeOutlineMaterial); no fresnel rim
         vec3 col = mix(uShellColor, uLineColor, max(lineA, vFresnel)); // rim takes the line colour
         float a = max(shellA, lineA);
         gl_FragColor = vec4(col, a * uOpacity);
+      }
+    `,
+  });
+}
+
+/**
+ * Inverted-hull outline: the same geometry pushed outwards along its normals and drawn back-face
+ * only. The depth prepass hides everything behind the front surface, so only a band of constant
+ * screen width remains around the silhouette, at any orientation. Swept by the same pulse as the
+ * blueprint lines (uRimFloor keeps a base outline between pulses).
+ *  uOffset  push distance in the mesh's local units (world width / group scale)
+ */
+export function makeOutlineMaterial({ color = 0x9a9d95, opacity = 0.22 } = {}) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+    uniforms: {
+      uOffset: { value: 0.0003 }, uOpacity: { value: opacity }, uColor: { value: new THREE.Color(color) },
+      uTime: { value: 0 }, uPeriod: { value: 0.96 }, uSweep: { value: 0.76 }, uDecay: { value: 4.0 }, uRimFloor: { value: 0.7 },
+      uMinY: { value: -1 }, uMaxY: { value: 1 },
+    },
+    vertexShader: /* glsl */ `
+      uniform float uOffset, uMinY, uMaxY;
+      varying float vH;
+      void main() {
+        vec3 p = position + normalize(normal) * uOffset;
+        vec4 wp = modelMatrix * vec4(p, 1.0);
+        vH = clamp((wp.y - uMinY) / (uMaxY - uMinY), 0.0, 1.0);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uOpacity, uTime, uPeriod, uSweep, uDecay, uRimFloor;
+      uniform vec3 uColor;
+      varying float vH;
+      void main() {
+        float phase = fract(uTime / uPeriod);
+        float since = phase / uSweep - (1.0 - vH);
+        float pulse = since < 0.0 ? 0.0 : exp(-since * uDecay);
+        gl_FragColor = vec4(uColor, uOpacity * (uRimFloor + (1.0 - uRimFloor) * pulse));
       }
     `,
   });

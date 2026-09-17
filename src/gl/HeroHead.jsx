@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import Env from './Env';
-import { makeGhostShellMaterial } from './HelmetGhost';
+import { makeGhostShellMaterial, makeOutlineMaterial } from './HelmetGhost';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
@@ -130,6 +130,8 @@ function Helmet({ glassAmount }) {
   }, [meshes, lineMat]);
   const depthMat = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), []);
   const depthGroup = useRef();
+  const outlineMat = useMemo(() => makeOutlineMaterial(), []);
+  const hullGroup = useRef();
   const inner = useRef();
   useEffect(() => {
     // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)
@@ -138,6 +140,7 @@ function Helmet({ glassAmount }) {
     const box = new THREE.Box3().setFromObject(inner.current);
     glass.uniforms.uMinY.value = box.min.y; glass.uniforms.uMaxY.value = box.max.y;
     lineMat.uniforms.uMinY.value = box.min.y; lineMat.uniforms.uMaxY.value = box.max.y;
+    outlineMat.uniforms.uMinY.value = box.min.y; outlineMat.uniforms.uMaxY.value = box.max.y;
   }, [glass, lineMat, meshes]);
 
   const debugMode = import.meta.env.DEV ? new URLSearchParams(location.search).get('debug') : null;
@@ -162,6 +165,10 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uOpacity.value = debugShell ? 0 : 0.42 * g;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     glass.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.7; // frozen debug views show the rim fully
+    outlineMat.uniforms.uTime.value = state.clock.elapsedTime;
+    outlineMat.uniforms.uOpacity.value = 0.22 * g;
+    outlineMat.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.7;
+    if (hullGroup.current) hullGroup.current.visible = g > 0.5;
     for (const l of blueprint) l.visible = g > 0.5;
     if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
   });
@@ -172,11 +179,15 @@ function Helmet({ glassAmount }) {
   const targetH = viewport.height * 0.68; // fitted: line-map extents vs the original (scripts/extents.mjs), width ratio 1.00
   const s = targetH / fit.size.y;
   const c = fit.center;
+  outlineMat.uniforms.uOffset.value = 0.006 / s; // 0.006 world units ~ 2 px at 1440x900
   return (
-    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]} rotation={[THREE.MathUtils.degToRad(0), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down. 10 deg broke the side rim; 0 for now */}  {/* y fitted: dome top row matches the original line map */}
+    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]} rotation={[THREE.MathUtils.degToRad(10), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down (user: 10 deg looks right) */}  {/* y fitted: dome top row matches the original line map */}
       <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
+        <group ref={hullGroup}>
+          {meshes.map((m) => <mesh key={'hull-' + m.name} geometry={m.geometry} material={outlineMat} />)}
+        </group>
         <group ref={depthGroup}>
           {meshes.map((m) => <mesh key={'depth-' + m.name} geometry={m.geometry} material={depthMat} />)}
         </group>
