@@ -13,8 +13,9 @@ export function useNavTheme(ref, theme) {
     const set = (t) => { document.documentElement.dataset.navTheme = t; };
     const st = ScrollTrigger.create({
       trigger: el,
-      start: 'top 3rem',
-      end: 'bottom 3rem',
+      // px/% only: ScrollTrigger does not parse rem in start/end strings
+      start: 'top 48px',
+      end: 'bottom 48px',
       onEnter: () => set(theme),
       onEnterBack: () => set(theme),
     });

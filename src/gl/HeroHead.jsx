@@ -2,6 +2,8 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import Env from './Env';
+import { makeGhostShellMaterial } from './HelmetGhost';
+import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
 
@@ -74,12 +76,8 @@ function Helmet({ glassAmount }) {
 
   const { solid, glass } = useMemo(() => {
     const solid = new THREE.MeshStandardMaterial({ map: base, roughness: 0.35, metalness: 0.2, transparent: true });
-    // "Ghost" shell: no transmission (it needs an opaque backbuffer), just a faint reflective
-    // shell whose opacity is driven by the intro. The wireframe overlay gives the blueprint look.
-    const glass = new THREE.MeshPhysicalMaterial({
-      color: 0xf4f4ed, roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1,
-      transparent: true, opacity: 0.22, envMapIntensity: 1.6, side: THREE.DoubleSide, depthWrite: false,
-    });
+    // ghost shell + swept UV-grid 'structure' lines, see HelmetGhost.js
+    const glass = makeGhostShellMaterial();
     return { solid, glass };
   }, [base]);
 
@@ -94,21 +92,35 @@ function Helmet({ glassAmount }) {
     return { meshes, fit: { size, center } };
   }, [scene]);
 
-  // wireframe overlay: thin edges give the "blueprint" ghost look after the intro
-  const wire = useMemo(() => meshes.map((m) => {
-    const l = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25), new THREE.LineBasicMaterial({ color: 0x282c20, transparent: true, opacity: 0.18 }));
-    m.getWorldPosition(l.position); l.quaternion.copy(m.getWorldQuaternion(new THREE.Quaternion())); l.scale.copy(m.getWorldScale(new THREE.Vector3()));
-    return l;
-  }), [meshes]);
+  const lineMat = useMemo(() => makeBlueprintMaterial(), []);
+  const blueprint = useMemo(() => meshes.map((m) => makeBlueprintLines(m, lineMat)), [meshes, lineMat]);
+  const inner = useRef();
+  useEffect(() => {
+    // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)
+    if (!inner.current) return;
+    inner.current.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(inner.current);
+    glass.uniforms.uMinY.value = box.min.y; glass.uniforms.uMaxY.value = box.max.y;
+    lineMat.uniforms.uMinY.value = box.min.y; lineMat.uniforms.uMaxY.value = box.max.y;
+  }, [glass, lineMat, meshes]);
 
-  useFrame((_, dt) => {
+  const debugWire = import.meta.env.DEV && new URLSearchParams(location.search).get('debug') === 'wire';
+  const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55 }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55 }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55 }) }), []);
+  useFrame((state, dt) => {
     const g = glassAmount.current;
+    if (debugWire) { for (const m of meshes) { m.visible = true; m.material = wireMats[m.name] || wireMats.helmet; } return; }
     for (const m of meshes) {
-      m.material = g > 0.5 ? glass : solid;
+      const ghost = g > 0.5;
+      m.material = ghost ? glass : solid;
       solid.opacity = 1 - g;
-      glass.opacity = 0.22 * g;
+      // observed: in the ghost state only the shell shows; ear pods/vents and the visor are hidden
+      m.visible = !ghost || m.name === 'helmet';
     }
-    for (const w of wire) w.material.opacity = 0.35 * g;
+    glass.uniforms.uTime.value = state.clock.elapsedTime;
+    glass.uniforms.uOpacity.value = g;
+    lineMat.uniforms.uTime.value = state.clock.elapsedTime;
+    lineMat.uniforms.uOpacity.value = 0.42 * g;
+    for (const l of blueprint) l.visible = g > 0.5;
   });
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
@@ -119,9 +131,9 @@ function Helmet({ glassAmount }) {
   const c = fit.center;
   return (
     <group ref={group} position={[0, viewport.height * 0.12, 0.3]}>
-      <group scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
+      <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
-        {wire.map((w, i) => <primitive key={i} object={w} />)}
+        {blueprint.map((l) => <primitive key={l.name} object={l} />)}
       </group>
     </group>
   );
