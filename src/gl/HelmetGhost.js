@@ -25,7 +25,7 @@ export function makeGhostShellMaterial() {
     uniforms: {
       uTime: { value: 0 }, uPeriod: { value: 0.96 }, uSweep: { value: 0.76 }, uDecay: { value: 3.0 },
       uLinesU: { value: 140.0 }, uLinesV: { value: 22.0 }, uWidth: { value: 0.16 },
-      uShell: { value: 0.025 }, uOpacity: { value: 1 }, uRimFloor: { value: 0.2 },
+      uShell: { value: 0.025 }, uOpacity: { value: 1 }, uRimFloor: { value: 0.7 },
       uLineColor: { value: new THREE.Color(0x6b6e66) }, uShellColor: { value: new THREE.Color(0xe6e7e0) },
       uMinY: { value: -1 }, uMaxY: { value: 1 },
     },

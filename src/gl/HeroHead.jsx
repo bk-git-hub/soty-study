@@ -161,7 +161,7 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
     lineMat.uniforms.uOpacity.value = debugShell ? 0 : 0.42 * g;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
-    glass.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.2; // frozen debug views show the rim fully
+    glass.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.7; // frozen debug views show the rim fully
     for (const l of blueprint) l.visible = g > 0.5;
     if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
   });
@@ -173,7 +173,7 @@ function Helmet({ glassAmount }) {
   const s = targetH / fit.size.y;
   const c = fit.center;
   return (
-    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]}>  {/* y fitted: dome top row matches the original line map */}
+    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]} rotation={[THREE.MathUtils.degToRad(10), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down */}  {/* y fitted: dome top row matches the original line map */}
       <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
