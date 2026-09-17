@@ -18,6 +18,10 @@ import { gl as glAsset, model, hdri } from '../lib/assets';
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
 const DRACO = '/orig/runtime/draco/';
+// Near-orthographic view like the original (camera at z=3 for a 0.077-unit helmet): narrow fov, far camera.
+// The world-space viewport height at z=0 stays 2.68 (same as fov 30 at z=5), so all viewport-based sizes hold.
+const FOV = 10;
+const CAM_Z = 2.68 / (2 * Math.tan((FOV / 2) * Math.PI / 180));
 
 const portraitVert = /* glsl */ `
   varying vec2 vUv;
@@ -69,6 +73,10 @@ function Portrait({ reveal }) {
 
 function Helmet({ glassAmount }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
+  // smooth outer shell that fits over the helmet (the 'disco' easter-egg mesh); in the ghost state its
+  // silhouette is the continuous outline the original shows around all the blueprint detail
+  const { scene: discoScene } = useGLTF(model('disco-02'), DRACO);
+  const envelope = useMemo(() => { let m = null; discoScene.traverse((o) => { if (o.isMesh && !m) m = o; }); return m; }, [discoScene]);
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
   const group = useRef();
@@ -116,10 +124,9 @@ function Helmet({ glassAmount }) {
     // the visor ('glass') is drawn too: the original shows a grid over the eye opening
     return meshes.map((m) => {
       let keep = null;
-      if (m.name === 'plastic') {
-        const { min, max } = m.geometry.boundingBox; const cut = min.y + 0.55 * (max.y - min.y);
-        keep = (ax, ay, az, bx, by) => ay > cut && by > cut;            // vents only
-      } else if (m.name === 'helmet') {
+      // 'plastic' (top/rear aero piece incl. its side wings) is drawn in full: the original's line map is
+      // wider at the upper sides than the shell alone
+      if (m.name === 'helmet') {
         keep = (ax, ay, az, bx, by, bz) => !inPod((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); // no ear-cup rings
       }
       return makeBlueprintLines(m, lineMat, keep);
@@ -127,6 +134,7 @@ function Helmet({ glassAmount }) {
   }, [meshes, lineMat]);
   const depthMat = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), []);
   const depthGroup = useRef();
+  const envelopeRef = useRef();
   const inner = useRef();
   useEffect(() => {
     // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)
@@ -149,8 +157,7 @@ function Helmet({ glassAmount }) {
       const ghost = g > 0.5;
       m.material = ghost ? glass : solid;
       solid.opacity = 1 - g;
-      // observed: in the ghost state only the shell shows; ear pods/vents and the visor are hidden
-      m.visible = !ghost || m.name === 'helmet';
+      m.visible = !ghost; // painted state only; in the ghost state the disco envelope + lines are drawn instead
     }
     glass.uniforms.uTime.value = state.clock.elapsedTime;
     glass.uniforms.uOpacity.value = g;
@@ -159,19 +166,21 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     for (const l of blueprint) l.visible = g > 0.5;
     if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
+    if (envelopeRef.current) envelopeRef.current.visible = g > 0.5;
   });
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
   // in front of the portrait so it wraps the head)
   // v2: reference helmet spans y 90-655 of 900 and the eye line sits mid-visor (measured on t07240)
-  const targetH = viewport.height * 0.6;
+  const targetH = viewport.height * 0.68; // fitted: line-map extents vs the original (scripts/extents.mjs), width ratio 1.00
   const s = targetH / fit.size.y;
   const c = fit.center;
   return (
-    <group ref={group} position={[0, viewport.height * 0.12, 0.3]}>
+    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]}>  {/* y fitted: dome top row matches the original line map */}
       <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
+        {envelope && <mesh ref={envelopeRef} geometry={envelope.geometry} material={glass} position={envelope.position} scale={envelope.scale} quaternion={envelope.quaternion} />}
         <group ref={depthGroup}>
           {meshes.map((m) => <mesh key={'depth-' + m.name} geometry={m.geometry} material={depthMat} />)}
         </group>
@@ -185,7 +194,7 @@ function Rig({ progress }) {
   useFrame(() => {
     // scroll-out: the whole hero drifts up and away as the page scrolls into the marquee section
     camera.position.y = -progress.current * 4;
-    camera.position.z = 5 + progress.current * 3;
+    camera.position.z = CAM_Z + progress.current * 3;
   });
   return null;
 }
@@ -211,7 +220,7 @@ export default function HeroHead({ ready, progressRef }) {
   }, [ready]);
 
   return (
-    <Canvas className="!absolute inset-0" dpr={[1, 1.5]} camera={{ position: [0, 0, 5], fov: 30 }} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
+    <Canvas className="!absolute inset-0" dpr={[1, 1.5]} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
       <Suspense fallback={null}>
         <Portrait reveal={reveal} />
