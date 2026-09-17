@@ -73,10 +73,6 @@ function Portrait({ reveal }) {
 
 function Helmet({ glassAmount }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
-  // smooth outer shell that fits over the helmet (the 'disco' easter-egg mesh); in the ghost state its
-  // silhouette is the continuous outline the original shows around all the blueprint detail
-  const { scene: discoScene } = useGLTF(model('disco-02'), DRACO);
-  const envelope = useMemo(() => { let m = null; discoScene.traverse((o) => { if (o.isMesh && !m) m = o; }); return m; }, [discoScene]);
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
   const group = useRef();
@@ -134,7 +130,6 @@ function Helmet({ glassAmount }) {
   }, [meshes, lineMat]);
   const depthMat = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), []);
   const depthGroup = useRef();
-  const envelopeRef = useRef();
   const inner = useRef();
   useEffect(() => {
     // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)
@@ -149,6 +144,8 @@ function Helmet({ glassAmount }) {
   const debugWire = debugMode === 'wire';
   // ?debug=lines: freeze the pulse with every blueprint line lit, for still comparisons
   const debugLines = debugMode === 'lines';
+  // ?debug=shell: hide the blueprint lines to inspect the envelope/rim alone
+  const debugShell = debugMode === 'shell';
   const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55 }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55 }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55 }) }), []);
   useFrame((state, dt) => {
     const g = glassAmount.current;
@@ -157,16 +154,15 @@ function Helmet({ glassAmount }) {
       const ghost = g > 0.5;
       m.material = ghost ? glass : solid;
       solid.opacity = 1 - g;
-      m.visible = !ghost; // painted state only; in the ghost state the disco envelope + lines are drawn instead
+      m.visible = true; // ghost state: every part drawn with the ghost material (faint body + thin fresnel rim = the outline)
     }
     glass.uniforms.uTime.value = state.clock.elapsedTime;
     glass.uniforms.uOpacity.value = g;
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
-    lineMat.uniforms.uOpacity.value = 0.42 * g;
+    lineMat.uniforms.uOpacity.value = debugShell ? 0 : 0.42 * g;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     for (const l of blueprint) l.visible = g > 0.5;
     if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
-    if (envelopeRef.current) envelopeRef.current.visible = g > 0.5;
   });
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
@@ -180,7 +176,6 @@ function Helmet({ glassAmount }) {
       <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
-        {envelope && <mesh ref={envelopeRef} geometry={envelope.geometry} material={glass} position={envelope.position} scale={envelope.scale} quaternion={envelope.quaternion} />}
         <group ref={depthGroup}>
           {meshes.map((m) => <mesh key={'depth-' + m.name} geometry={m.geometry} material={depthMat} />)}
         </group>

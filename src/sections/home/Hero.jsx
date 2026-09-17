@@ -27,7 +27,7 @@ export default function Hero({ ready }) {
   }, []);
 
   return (
-    <div ref={ref} className="relative bg-white text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
+    <div ref={ref} className="relative bg-[#f9f9f5] text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
       <div className="sticky top-0 h-[calc(var(--vh)*100)] overflow-clip">
         <Contours className="absolute inset-0 text-[#dcdcd3]" />
         <section className="relative h-full flex items-center justify-center">

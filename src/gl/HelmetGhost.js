@@ -25,7 +25,7 @@ export function makeGhostShellMaterial() {
     uniforms: {
       uTime: { value: 0 }, uPeriod: { value: 0.96 }, uSweep: { value: 0.76 }, uDecay: { value: 3.0 },
       uLinesU: { value: 140.0 }, uLinesV: { value: 22.0 }, uWidth: { value: 0.16 },
-      uShell: { value: 0.015 }, uOpacity: { value: 1 },
+      uShell: { value: 0.025 }, uOpacity: { value: 1 },
       uLineColor: { value: new THREE.Color(0x6b6e66) }, uShellColor: { value: new THREE.Color(0xe6e7e0) },
       uMinY: { value: -1 }, uMaxY: { value: 1 },
     },
@@ -38,7 +38,7 @@ export function makeGhostShellMaterial() {
         vUv = uv;
         vec3 n = normalize(mat3(modelMatrix) * normal);
         vec3 v = normalize(cameraPosition - wp.xyz);
-        vFresnel = pow(1.0 - abs(dot(n, v)), 2.0); // brighter silhouette, like a glass rim
+        vFresnel = pow(1.0 - abs(dot(n, v)), 10.0); // narrow rim: only the last few degrees before the silhouette
         gl_Position = projectionMatrix * viewMatrix * wp;
       }
     `,
@@ -65,8 +65,9 @@ export function makeGhostShellMaterial() {
         float lineA = 0.0; // strokes are now real mesh edges (BlueprintLines.js)
         // measured on the original (glass state): the shell body is at most ~6/255 darker than the page and absent
         // on the cheeks; only a faint rim remains, so the envelope is nearly invisible
-        float shellA = uShell + 0.08 * vFresnel;
-        vec3 col = mix(uShellColor, uLineColor, lineA);
+        // thin outline: the original's edge dips ~16/255 over 2 px, the body sits 5-7/255 below the page
+        float shellA = uShell + 0.20 * vFresnel;
+        vec3 col = mix(uShellColor, uLineColor, max(lineA, vFresnel)); // rim takes the line colour
         float a = max(shellA, lineA);
         gl_FragColor = vec4(col, a * uOpacity);
       }
