@@ -62,7 +62,7 @@ function Portrait({ reveal }) {
   return (
     <mesh position={[0, 0, 0]}>
       <planeGeometry args={[h * aspect, h]} />
-      <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite={false} />
+      <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite={false} depthTest={false} />
     </mesh>
   );
 }
@@ -113,7 +113,8 @@ function Helmet({ glassAmount }) {
       }
     }
     const inPod = (x, y, z) => pods.some((p) => Math.hypot(x - p.c.x, y - p.c.y, z - p.c.z) < p.r);
-    return meshes.filter((m) => m.name !== 'glass').map((m) => {
+    // the visor ('glass') is drawn too: the original shows a grid over the eye opening
+    return meshes.map((m) => {
       let keep = null;
       if (m.name === 'plastic') {
         const { min, max } = m.geometry.boundingBox; const cut = min.y + 0.55 * (max.y - min.y);
@@ -124,6 +125,8 @@ function Helmet({ glassAmount }) {
       return makeBlueprintLines(m, lineMat, keep);
     });
   }, [meshes, lineMat]);
+  const depthMat = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), []);
+  const depthGroup = useRef();
   const inner = useRef();
   useEffect(() => {
     // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)
@@ -151,6 +154,7 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
     lineMat.uniforms.uOpacity.value = 0.42 * g;
     for (const l of blueprint) l.visible = g > 0.5;
+    if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
   });
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
@@ -164,6 +168,9 @@ function Helmet({ glassAmount }) {
       <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
+        <group ref={depthGroup}>
+          {meshes.map((m) => <mesh key={'depth-' + m.name} geometry={m.geometry} material={depthMat} />)}
+        </group>
       </group>
     </group>
   );
