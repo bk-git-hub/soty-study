@@ -17,3 +17,7 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# Original site assets, local study only (never commit)
+public/orig/
+src/data/orig-index.js

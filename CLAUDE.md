@@ -2,7 +2,7 @@
 
 ## Goal
 Recreate the target design website **as close to pixel- and motion-perfect as possible**.
-Target: [TARGET SITE URL]
+Target: https://landonorris.com (OFF+BRAND, Awwwards Site of the Year 2026)
 
 ## Rules
 - Rebuild from observation (recordings and screenshots in `reference/`). Don't copy code from the original site.

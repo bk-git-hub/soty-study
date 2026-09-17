@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Design tokens (observed from the original: colors, spacing, type)
+   ------------------------------------------------------------------ */
+@theme {
+  --color-black: #111112;
+  --color-dark-green: #282c20;
+  --color-dark-green-tint-1: #3b3c38;
+  --color-dark-green-tint-2: #535450;
+  --color-green-off-white-1: #dde1d2;
+  --color-green-off-white-2: #b4b8a5;
+  --color-green-light: #ebeee0;
+  --color-grey-2: #c8cbbd;
+  --color-grey-on-track: #b9bbad;
+  --color-lime: #d2ff00;
+  --color-lime-off: #b2c73a;
+  --color-orange: #ff6b00;
+  --color-white: #f4f4ed;
+  --color-cream: #efefe5;
+
+  --font-sans: "Mona Sans", Arial, sans-serif;
+  --font-serif: "Brier", "Instrument Serif", Georgia, serif;
+}
+
+:root {
+  --gap: 1.25rem;
+  --padding-container: 1.25rem;
+  --grid-spacer: 31.51vh;
+  --text-impact: 7.9375rem;
+  --text-btn-primary: 1rem;
+  --text-btn-nav: 1.25rem;
+  --text-btn-footer: 1.875rem;
+  --vh: 1vh;
+  --ease-site: cubic-bezier(.19, 1, .22, 1);
+  --anim-default: .75s cubic-bezier(.65, .05, 0, 1);
+
+  /* Fluid scaling: the design is 1728px wide with a 16px base unit.
+     1rem = 16px at a 1728px viewport and scales linearly between 992px and 1920px.
+     Every size on the site is in rem, so this single rule makes the whole layout fluid. */
+  --min-width: 992px;
+  --max-width: 1920px;
+  --design-width: 1728;
+  --design-unit: 16;
+  --fluid-container: clamp(var(--min-width), 100vw, var(--max-width));
+  --fluid-font: calc(var(--fluid-container) / var(--design-width) * var(--design-unit));
+}
+@media (max-width: 991px) { :root { --min-width: 768px; --max-width: 991px; --design-unit: 20; } }
+@media (max-width: 767px) { :root { --min-width: 480px; --max-width: 767px; } }
+@media (max-width: 479px) { :root { --min-width: 320px; --max-width: 479px; --design-unit: 48; --padding-container: 1rem; } }
+
+/* Fonts. Mona Sans (OFL, public/fonts). Brier is a commercial face: local dev loads the original
+   from the gitignored public/orig folder; the public build falls back to Instrument Serif. */
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/MonaSans-Variable.ttf") format("truetype");
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Brier";
+  src: url("/orig/runtime/fonts/Brier-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+html { font-size: var(--fluid-font); scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
+body {
+  background: var(--color-dark-green);
+  color: var(--color-white);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+canvas { display: block; }
+
+/* Layout helpers */
+.container { width: 100%; max-width: var(--fluid-container); margin-inline: auto; padding-inline: var(--padding-container); }
+.grid-main { display: grid; grid-template-columns: repeat(4, 23.55%); column-gap: var(--gap); width: 100%; }
+.vh100 { min-height: calc(var(--vh) * 100); }
+
+/* ------------------------------------------------------------------
+   Typography (names mirror the roles seen on the site, values observed)
+   Mona Sans is a variable font with weight + width axes, so most styles
+   set font-variation-settings rather than font-weight.
+   ------------------------------------------------------------------ */
+.t-eyebrow { font-family: var(--font-sans); font-variation-settings: "wght" 700, "wdth" 100; font-size: .625rem; line-height: 1; text-transform: uppercase; letter-spacing: 0; }
+.t-eyebrow.large { font-variation-settings: "wght" 812, "wdth" 81.3; font-size: 1.125rem; letter-spacing: -.01rem; }
+.t-impact-lg { font-size: var(--text-impact); font-variation-settings: "wght" 660, "wdth" 93; letter-spacing: -.0625rem; text-transform: uppercase; line-height: .906; }
+.t-impact-lg.reduce { font-variation-settings: "wght" 750, "wdth" 93; letter-spacing: -.25rem; font-size: 7rem; line-height: .816; }
+.t-impact-lg-serif { font-family: var(--font-serif); font-weight: 700; font-size: 8.25rem; letter-spacing: -.1875rem; line-height: .83; text-transform: none; }
+.t-impact-reg { font-variation-settings: "wght" 750, "wdth" 93; font-size: 7rem; letter-spacing: -.25rem; text-transform: uppercase; line-height: .816; }
+.t-impact-reg-serif { font-family: var(--font-serif); font-weight: 700; font-size: 7.3125rem; letter-spacing: -.21875rem; line-height: .81; text-transform: uppercase; }
+.t-impact-sm { font-variation-settings: "wght" 660, "wdth" 93; font-size: 5.25rem; letter-spacing: -.0625px; text-transform: uppercase; line-height: .856; }
+.t-impact-sm-serif { font-family: var(--font-serif); font-weight: 700; font-size: 5.4375rem; letter-spacing: -.125rem; line-height: .856; text-transform: uppercase; }
+.t-title-lg { font-variation-settings: "wght" 750, "wdth" 93; font-size: 4.5rem; letter-spacing: -.125rem; text-transform: uppercase; line-height: .886; }
+.t-title-lg-serif { font-family: var(--font-serif); font-weight: 700; font-size: 4.6875rem; line-height: .886; text-transform: none; letter-spacing: 0; }
+.t-title-reg { font-variation-settings: "wght" 750, "wdth" 93; font-size: 2.625rem; letter-spacing: -.125rem; text-transform: uppercase; line-height: .886; }
+.t-title-reg-serif { font-family: var(--font-serif); font-weight: 700; font-size: 2.75rem; letter-spacing: -.125rem; line-height: .886; }
+.t-hero-heading { font-variation-settings: "wght" 700, "wdth" 95; font-size: 22.3rem; letter-spacing: -.1875rem; text-transform: uppercase; line-height: .886; }
+.t-body-lg { font-variation-settings: "wght" 500, "wdth" 100; font-size: 2.25rem; letter-spacing: -.0625rem; line-height: 1.1; }
+.t-body-lg-serif { font-family: var(--font-serif); font-weight: 700; font-size: 2.25rem; letter-spacing: -.0625rem; line-height: 1.1; }
+.t-body-reg { font-variation-settings: "wght" 500, "wdth" 100; font-size: 1.25rem; letter-spacing: -.0125rem; line-height: 1.25; }
+.t-body-sm { font-variation-settings: "wght" 500, "wdth" 100; font-size: 1rem; letter-spacing: -.0125rem; line-height: 1.3; }
+.t-quote { font-family: var(--font-serif); font-weight: 700; font-size: 1.5rem; letter-spacing: -.03125rem; line-height: .95; }
+.t-callout { font-family: var(--font-serif); font-weight: 700; font-size: 1.5rem; letter-spacing: .05rem; line-height: .946; }
+.t-cta-intro { font-family: var(--font-serif); font-weight: 700; font-size: 2rem; letter-spacing: .040625rem; line-height: 1.04; }
+.t-descriptor { font-variation-settings: "wght" 800, "wdth" 87.5; font-size: 1rem; text-transform: uppercase; line-height: .97; }
+.t-stat-reg { font-variation-settings: "wght" 700, "wdth" 75; font-size: 2.0625rem; letter-spacing: -.00625rem; text-transform: uppercase; line-height: .97; }
+.t-stat-sm { font-variation-settings: "wght" 700, "wdth" 75; font-size: 1.5rem; text-transform: uppercase; line-height: 1; }
+.t-stat-large { font-variation-settings: "wght" 700, "wdth" 75; font-size: 2.75rem; text-transform: uppercase; line-height: .97; }
+.t-stat-major { font-variation-settings: "wght" 700, "wdth" 75; font-size: 4.375rem; text-transform: uppercase; line-height: .93; }
+.t-number { font-variation-settings: "wght" 700, "wdth" 75; font-size: 17.5rem; letter-spacing: -.1rem; line-height: .8; }
+.t-number-gigantic { font-variation-settings: "wght" 700, "wdth" 75; font-size: 122rem; line-height: .85; }
+.t-nav-link { font-variation-settings: "wght" 660, "wdth" 93; font-size: 5.25rem; text-transform: uppercase; line-height: .94; transition: color .6s var(--ease-site); }
+.t-btn { font-family: var(--font-sans); font-variation-settings: "wght" 800, "wdth" 86; font-size: var(--text-btn-primary); text-transform: uppercase; line-height: 1; }
+.t-btn.nav { font-size: var(--text-btn-nav); }
+.t-btn.footer { font-size: var(--text-btn-footer); }
+.t-small-label { font-size: .75rem; font-weight: 600; line-height: 1.25; }
+.serif { font-family: var(--font-serif); font-weight: 700; text-transform: none; }
+strong { font-family: var(--font-serif); font-weight: 700; }
+.strong-lime strong { color: var(--color-lime-off); }
+
+@media (max-width: 991px) {
+  .t-eyebrow { font-size: .8rem; }
+  .t-impact-lg { font-size: 7rem; }
+  .t-hero-heading { font-size: 17rem; }
+}
+@media (max-width: 479px) {
+  .t-eyebrow { font-size: .8rem; }
+  .t-impact-lg, .t-impact-lg.reduce { font-size: 3.5rem; }
+  .t-impact-lg-serif { font-size: 3.6rem; }
+  .t-impact-reg, .t-impact-reg-serif { font-size: 4rem; letter-spacing: -.1rem; }
+  .t-impact-sm, .t-impact-sm-serif { font-size: 3.6rem; }
+  .t-title-lg, .t-title-lg-serif { font-size: 2.6rem; }
+  .t-title-reg, .t-title-reg-serif { font-size: 1.9rem; }
+  .t-hero-heading { font-size: 7.7rem; }
+  .t-body-lg-serif { font-size: 1.9rem; }
+  .t-body-reg { font-size: 1.3rem; }
+  .t-nav-link { font-size: 3.7rem; }
+  .t-stat-major { font-size: 2.2rem; }
+  .t-number { font-size: 10rem; }
+  .grid-main { grid-template-columns: 1fr 1fr; }
+}
+
+/* Text hover: label slides up and a duplicate slides in from below (observed on links/buttons). */
+.text-hover { position: relative; display: inline-block; overflow: clip; clip-path: polygon(0 -2%, 0 94%, 100% 94%, 100% -2%); }
+.text-hover > span { display: block; transition: transform .6s var(--ease-site); }
+.text-hover > span + span { position: absolute; inset: 0; transform: translateY(105%); }
+a:hover .text-hover > span:first-child, .text-hover:hover > span:first-child { transform: translateY(-105%); }
+a:hover .text-hover > span + span, .text-hover:hover > span + span { transform: translateY(0); }
+
+/* Screen-reader only */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Nav theme: sections set data-nav-theme on <html>; "dark" = dark text over light sections. */
+html[data-nav-theme="dark"] .nav-brand-img, html[data-nav-theme="dark"] .nav-mark-img { filter: none; }
+html[data-nav-theme="light"] .nav-brand-text { color: var(--color-white); }
+.nav-brand-text { transition: color .5s var(--ease-site); }
+html[data-nav-theme="light"] .nav-brand-img, html[data-nav-theme="light"] .nav-mark-img { filter: brightness(0) invert(1); }
+html[data-nav-theme="light"] .nav-ham { background: var(--color-white); }
+.nav-brand-img, .nav-mark-img, .nav-ham { transition: filter .5s var(--ease-site), background .5s var(--ease-site); }
+
+/* Helmet card reveal (hover image wipes in from the top with an ellipse) */
+.helmet-reveal { clip-path: ellipse(100% 0% at 50% 0); transform: scale(1.05); transition: clip-path var(--anim-default), transform var(--anim-default); }
+.helmet-card:hover .helmet-reveal { clip-path: ellipse(100% 120% at 50% 0%); transform: scale(1); }
