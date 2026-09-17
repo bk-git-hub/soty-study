@@ -55,9 +55,10 @@ function Portrait({ reveal }) {
   // The photo is portrait-oriented; fit it so the face sits in the upper-middle of the screen
   // and the shoulders run off the bottom edge (observed framing).
   const aspect = diffuse.image.width / diffuse.image.height;
-  const h = viewport.height * 1.02;
+  // v1: measured against reference t05840 with an overlay: eyes at y=425/900, chin at 672/900
+  const h = viewport.height * 1.2;
   return (
-    <mesh position={[0, -viewport.height * 0.07, 0]}>
+    <mesh position={[0, 0, 0]}>
       <planeGeometry args={[h * aspect, h]} />
       <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite={false} />
     </mesh>
@@ -112,7 +113,8 @@ function Helmet({ glassAmount }) {
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
   // in front of the portrait so it wraps the head)
-  const targetH = viewport.height * 0.52;
+  // v2: reference helmet spans y 90-655 of 900 and the eye line sits mid-visor (measured on t07240)
+  const targetH = viewport.height * 0.6;
   const s = targetH / fit.size.y;
   const c = fit.center;
   return (
