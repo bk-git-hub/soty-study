@@ -137,7 +137,10 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uMinY.value = box.min.y; lineMat.uniforms.uMaxY.value = box.max.y;
   }, [glass, lineMat, meshes]);
 
-  const debugWire = import.meta.env.DEV && new URLSearchParams(location.search).get('debug') === 'wire';
+  const debugMode = import.meta.env.DEV ? new URLSearchParams(location.search).get('debug') : null;
+  const debugWire = debugMode === 'wire';
+  // ?debug=lines: freeze the pulse with every blueprint line lit, for still comparisons
+  const debugLines = debugMode === 'lines';
   const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55 }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55 }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55 }) }), []);
   useFrame((state, dt) => {
     const g = glassAmount.current;
@@ -153,6 +156,7 @@ function Helmet({ glassAmount }) {
     glass.uniforms.uOpacity.value = g;
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
     lineMat.uniforms.uOpacity.value = 0.42 * g;
+    lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     for (const l of blueprint) l.visible = g > 0.5;
     if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
   });
