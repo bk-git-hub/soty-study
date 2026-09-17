@@ -173,7 +173,7 @@ function Helmet({ glassAmount }) {
   const s = targetH / fit.size.y;
   const c = fit.center;
   return (
-    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]} rotation={[THREE.MathUtils.degToRad(10), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down */}  {/* y fitted: dome top row matches the original line map */}
+    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]} rotation={[THREE.MathUtils.degToRad(0), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down. 10 deg broke the side rim; 0 for now */}  {/* y fitted: dome top row matches the original line map */}
       <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
