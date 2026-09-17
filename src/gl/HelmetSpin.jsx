@@ -9,11 +9,11 @@ import Env from './Env';
 const DRACO = '/orig/runtime/draco/';
 
 /**
- * Solid gold helmet (helmet-21.glb + PBR maps) that idles slowly and follows the pointer.
+ * Solid gold helmet (helmet-21.glb + PBR maps) that idles slowly.
  * Used on the on-track hero and the 404 page. `scrollRef` (0..1) adds a scroll-driven spin.
  * The GLB is measured once (bounding box) and scaled so its height fills `fill` of the viewport.
  */
-function Model({ mouse, scrollRef, variant, fill }) {
+function Model({ scrollRef, variant, fill }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
   const [base, normal, rough, metal] = useTexture([
     glAsset(`textures/helmet/webp/${variant}/Norris_Helmet_mat_BaseColor.webp`),
@@ -36,8 +36,9 @@ function Model({ mouse, scrollRef, variant, fill }) {
   useFrame((state, dt) => {
     if (!g.current) return;
     const t = state.clock.elapsedTime;
-    const ty = -0.6 + mouse.current.x * 0.5 + Math.sin(t * 0.4) * 0.15 + (scrollRef?.current || 0) * Math.PI * 2;
-    const tx = -mouse.current.y * 0.25 + Math.sin(t * 0.3) * 0.05;
+    // slow idle sway + scroll-driven spin only (the original has no pointer-follow)
+    const ty = -0.6 + Math.sin(t * 0.4) * 0.15 + (scrollRef?.current || 0) * Math.PI * 2;
+    const tx = Math.sin(t * 0.3) * 0.05;
     g.current.rotation.y += (ty - g.current.rotation.y) * (1 - Math.exp(-dt * 3));
     g.current.rotation.x += (tx - g.current.rotation.x) * (1 - Math.exp(-dt * 3));
   });
@@ -53,17 +54,11 @@ function Model({ mouse, scrollRef, variant, fill }) {
 }
 
 export default function HelmetSpin({ className = '', scrollRef, variant = 'gold', fill = 0.62 }) {
-  const mouse = useRef(new THREE.Vector2());
-  useEffect(() => {
-    const move = (e) => mouse.current.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
-    window.addEventListener('pointermove', move);
-    return () => window.removeEventListener('pointermove', move);
-  }, []);
   return (
     <Canvas className={className} dpr={[1, 1.5]} camera={{ position: [0, 0, 5], fov: 30 }} gl={{ antialias: true, alpha: true }}>
       <Env url={hdri('studio_small_08_1k--light')} />
       <Suspense fallback={null}>
-        <Model mouse={mouse} scrollRef={scrollRef} variant={variant} fill={fill} />
+        <Model scrollRef={scrollRef} variant={variant} fill={fill} />
       </Suspense>
       <ambientLight intensity={0.5} />
       <directionalLight position={[3, 5, 4]} intensity={1.6} />

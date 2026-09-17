@@ -35,7 +35,7 @@ const portraitFrag = /* glsl */ `
   }
 `;
 
-function Portrait({ mouse, reveal }) {
+function Portrait({ reveal }) {
   const [diffuse, depth, alpha] = useTexture([
     glAsset('textures/head/webp/diffuse.webp'),
     glAsset('textures/head/webp/depth.webp'),
@@ -50,7 +50,6 @@ function Portrait({ mouse, reveal }) {
   const mat = useRef();
   useFrame((_, dt) => {
     const u = mat.current.uniforms;
-    u.uMouse.value.lerp(mouse.current, 1 - Math.exp(-dt * 6)); // frame-rate independent ease
     u.uReveal.value += (reveal.current - u.uReveal.value) * (1 - Math.exp(-dt * 4));
   });
   // The photo is portrait-oriented; fit it so the face sits in the upper-middle of the screen
@@ -65,7 +64,7 @@ function Portrait({ mouse, reveal }) {
   );
 }
 
-function Helmet({ mouse, glassAmount }) {
+function Helmet({ glassAmount }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
@@ -109,11 +108,6 @@ function Helmet({ mouse, glassAmount }) {
       glass.opacity = 0.22 * g;
     }
     for (const w of wire) w.material.opacity = 0.35 * g;
-    if (group.current) {
-      const target = new THREE.Euler(mouse.current.y * 0.15, mouse.current.x * 0.35, 0);
-      group.current.rotation.x += (target.x - group.current.rotation.x) * (1 - Math.exp(-dt * 4));
-      group.current.rotation.y += (target.y - group.current.rotation.y) * (1 - Math.exp(-dt * 4));
-    }
   });
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
@@ -142,19 +136,10 @@ function Rig({ progress }) {
 }
 
 export default function HeroHead({ ready, progressRef }) {
-  const mouse = useRef(new THREE.Vector2());
   const reveal = useRef(0);
   const glassAmount = useRef(0);
   const fallback = useRef(0);
   const progress = progressRef || fallback;
-
-  useEffect(() => {
-    const move = (e) => {
-      mouse.current.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
-    };
-    window.addEventListener('pointermove', move);
-    return () => window.removeEventListener('pointermove', move);
-  }, []);
 
   useEffect(() => {
     // intro: portrait reveals with the loader wipe, then the solid helmet dissolves into glass
@@ -174,8 +159,8 @@ export default function HeroHead({ ready, progressRef }) {
     <Canvas className="!absolute inset-0" dpr={[1, 1.5]} camera={{ position: [0, 0, 5], fov: 30 }} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
       <Suspense fallback={null}>
-        <Portrait mouse={mouse} reveal={reveal} />
-        <Helmet mouse={mouse} glassAmount={glassAmount} />
+        <Portrait reveal={reveal} />
+        <Helmet glassAmount={glassAmount} />
         <Rig progress={progress} />
       </Suspense>
       <ambientLight intensity={0.6} />
