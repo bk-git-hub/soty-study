@@ -1,0 +1,19 @@
+# Private: study material, notes and logs
+reference/
+compare/
+private/
+CLAUDE.local.md
+
+# Dependencies & build
+node_modules/
+dist/
+.next/
+.vite/
+.cache/
+
+# Local
+.env
+.env.*
+.DS_Store
+Thumbs.db
+*.log
