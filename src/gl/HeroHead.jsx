@@ -161,6 +161,7 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
     lineMat.uniforms.uOpacity.value = debugShell ? 0 : 0.42 * g;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
+    glass.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.2; // frozen debug views show the rim fully
     for (const l of blueprint) l.visible = g > 0.5;
     if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
   });

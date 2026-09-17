@@ -25,7 +25,7 @@ export function makeGhostShellMaterial() {
     uniforms: {
       uTime: { value: 0 }, uPeriod: { value: 0.96 }, uSweep: { value: 0.76 }, uDecay: { value: 3.0 },
       uLinesU: { value: 140.0 }, uLinesV: { value: 22.0 }, uWidth: { value: 0.16 },
-      uShell: { value: 0.025 }, uOpacity: { value: 1 },
+      uShell: { value: 0.025 }, uOpacity: { value: 1 }, uRimFloor: { value: 0.2 },
       uLineColor: { value: new THREE.Color(0x6b6e66) }, uShellColor: { value: new THREE.Color(0xe6e7e0) },
       uMinY: { value: -1 }, uMaxY: { value: 1 },
     },
@@ -43,7 +43,7 @@ export function makeGhostShellMaterial() {
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uTime, uPeriod, uSweep, uDecay, uLinesU, uLinesV, uWidth, uShell, uOpacity;
+      uniform float uTime, uPeriod, uSweep, uDecay, uLinesU, uLinesV, uWidth, uShell, uOpacity, uRimFloor;
       uniform vec3 uLineColor, uShellColor;
       varying float vH; varying vec2 vUv; varying float vFresnel;
       // anti-aliased grid line: 1 inside a stroke of width uWidth (cell fraction), 0 elsewhere
@@ -66,7 +66,8 @@ export function makeGhostShellMaterial() {
         // measured on the original (glass state): the shell body is at most ~6/255 darker than the page and absent
         // on the cheeks; only a faint rim remains, so the envelope is nearly invisible
         // thin outline: the original's edge dips ~16/255 over 2 px, the body sits 5-7/255 below the page
-        float shellA = uShell + 0.20 * vFresnel;
+        // the rim is swept by the same front as the blueprint lines; uRimFloor keeps a faint outline between pulses
+        float shellA = uShell + 0.20 * vFresnel * (uRimFloor + (1.0 - uRimFloor) * pulse);
         vec3 col = mix(uShellColor, uLineColor, max(lineA, vFresnel)); // rim takes the line colour
         float a = max(shellA, lineA);
         gl_FragColor = vec4(col, a * uOpacity);
