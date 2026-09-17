@@ -93,7 +93,37 @@ function Helmet({ glassAmount }) {
   }, [scene]);
 
   const lineMat = useMemo(() => makeBlueprintMaterial(), []);
-  const blueprint = useMemo(() => meshes.map((m) => makeBlueprintLines(m, lineMat)), [meshes, lineMat]);
+  // Observed on the original's line map (every line ever drawn over 60 s): the shell and the top vents
+  // are drawn, the ear pods and the visor are not. 'plastic' holds vents (top) and ear pods (sides):
+  // keep only its upper part.
+  const blueprint = useMemo(() => {
+    // Ear pods: the lower part of the 'plastic' mesh, split left/right. Their centres and radius
+    // are used to cut the same pockets out of the shell lines (the shell models the ear cups too).
+    const plastic = meshes.find((m) => m.name === 'plastic');
+    const pods = [];
+    if (plastic) {
+      const pos = plastic.geometry.attributes.position; plastic.geometry.computeBoundingBox();
+      const { min, max } = plastic.geometry.boundingBox; const cut = min.y + 0.55 * (max.y - min.y);
+      for (const sign of [-1, 1]) {
+        let n = 0; const c = new THREE.Vector3();
+        for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); if (y < cut && Math.sign(x) === sign) { c.x += x; c.y += y; c.z += pos.getZ(i); n++; } }
+        if (!n) continue; c.divideScalar(n);
+        let r = 0; for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); if (y < cut && Math.sign(x) === sign) r = Math.max(r, Math.hypot(x - c.x, y - c.y, pos.getZ(i) - c.z)); }
+        pods.push({ c, r: r * 2.1 }); // the shell's ear-cup rings extend well beyond the pod itself
+      }
+    }
+    const inPod = (x, y, z) => pods.some((p) => Math.hypot(x - p.c.x, y - p.c.y, z - p.c.z) < p.r);
+    return meshes.filter((m) => m.name !== 'glass').map((m) => {
+      let keep = null;
+      if (m.name === 'plastic') {
+        const { min, max } = m.geometry.boundingBox; const cut = min.y + 0.55 * (max.y - min.y);
+        keep = (ax, ay, az, bx, by) => ay > cut && by > cut;            // vents only
+      } else if (m.name === 'helmet') {
+        keep = (ax, ay, az, bx, by, bz) => !inPod((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); // no ear-cup rings
+      }
+      return makeBlueprintLines(m, lineMat, keep);
+    });
+  }, [meshes, lineMat]);
   const inner = useRef();
   useEffect(() => {
     // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)

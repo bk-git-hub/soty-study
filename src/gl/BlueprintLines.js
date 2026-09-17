@@ -8,7 +8,8 @@ import * as THREE from 'three';
  * triangle we drop its longest edge, which is the diagonal on a regular quad mesh. Edges are
  * de-duplicated so shared edges are drawn once.
  */
-export function makeBlueprintGeometry(geometry) {
+/** keep(ax,ay,az,bx,by,bz) -> false drops an edge (used to leave out parts the original does not draw) */
+export function makeBlueprintGeometry(geometry, keep = null) {
   const pos = geometry.attributes.position;
   const index = geometry.index;
   const triCount = index ? index.count / 3 : pos.count / 3;
@@ -26,10 +27,11 @@ export function makeBlueprintGeometry(geometry) {
   let o = 0;
   for (const [u, v] of edges.values()) {
     a.fromBufferAttribute(pos, u); b.fromBufferAttribute(pos, v);
+    if (keep && !keep(a.x, a.y, a.z, b.x, b.y, b.z)) continue;
     out[o++] = a.x; out[o++] = a.y; out[o++] = a.z; out[o++] = b.x; out[o++] = b.y; out[o++] = b.z;
   }
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(out, 3));
+  geo.setAttribute('position', new THREE.BufferAttribute(out.subarray(0, o), 3));
   return geo;
 }
 
@@ -70,8 +72,8 @@ export function makeBlueprintMaterial({ color = 0xa9aca4, opacity = 0.42 } = {})
   });
 }
 
-export function makeBlueprintLines(mesh, material) {
-  const lines = new THREE.LineSegments(makeBlueprintGeometry(mesh.geometry), material);
+export function makeBlueprintLines(mesh, material, keep = null) {
+  const lines = new THREE.LineSegments(makeBlueprintGeometry(mesh.geometry, keep), material);
   lines.name = 'blueprint-' + mesh.name;
   mesh.getWorldPosition(lines.position);
   lines.quaternion.copy(mesh.getWorldQuaternion(new THREE.Quaternion()));
