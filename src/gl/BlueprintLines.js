@@ -3,13 +3,11 @@ import * as THREE from 'three';
 /**
  * Blueprint lines = the helmet's real mesh edges (all parts: shell, vents, ear pods, visor).
  *
- * The GLB is triangulated. A triangulated quad grid has one diagonal per quad; the original's
- * blueprint shows the quad grid without diagonals (vertical + horizontal strokes), so for each
- * triangle we drop its longest edge, which is the diagonal on a regular quad mesh. Edges are
- * de-duplicated so shared edges are drawn once.
+ * The GLB is triangulated. The original's blueprint shows the diagonals too (clearly on the visor),
+ * so by default every triangle edge is kept; edges are de-duplicated so shared edges are drawn once.
  */
 /** keep(ax,ay,az,bx,by,bz) -> false drops an edge (used to leave out parts the original does not draw) */
-export function makeBlueprintGeometry(geometry, keep = null) {
+export function makeBlueprintGeometry(geometry, keep = null, diagonals = true) {
   const pos = geometry.attributes.position;
   const index = geometry.index;
   const triCount = index ? index.count / 3 : pos.count / 3;
@@ -21,7 +19,9 @@ export function makeBlueprintGeometry(geometry, keep = null) {
     a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2);
     const e = [[i0, i1, a.distanceToSquared(b)], [i1, i2, b.distanceToSquared(c)], [i2, i0, c.distanceToSquared(a)]];
     e.sort((p, q) => p[2] - q[2]);
-    for (const [u, v] of e.slice(0, 2)) { const k = key(u, v); if (!edges.has(k)) edges.set(k, [u, v]); }
+    // diagonals=true keeps all three edges (the original shows diagonals, e.g. on the visor);
+    // false drops the longest edge per triangle, which is the quad diagonal on a regular grid
+    for (const [u, v] of (diagonals ? e : e.slice(0, 2))) { const k = key(u, v); if (!edges.has(k)) edges.set(k, [u, v]); }
   }
   const out = new Float32Array(edges.size * 6);
   let o = 0;
@@ -72,8 +72,8 @@ export function makeBlueprintMaterial({ color = 0xa9aca4, opacity = 0.42 } = {})
   });
 }
 
-export function makeBlueprintLines(mesh, material, keep = null) {
-  const lines = new THREE.LineSegments(makeBlueprintGeometry(mesh.geometry, keep), material);
+export function makeBlueprintLines(mesh, material, keep = null, diagonals = true) {
+  const lines = new THREE.LineSegments(makeBlueprintGeometry(mesh.geometry, keep, diagonals), material);
   lines.name = 'blueprint-' + mesh.name;
   mesh.getWorldPosition(lines.position);
   lines.quaternion.copy(mesh.getWorldQuaternion(new THREE.Quaternion()));
