@@ -59,6 +59,10 @@ const portraitFrag = /* glsl */ `
     vec4 c = texture2D(uDiffuse, uv);
     float a = texture2D(uAlpha, uv).r;
     gl_FragColor = vec4(c.rgb, a * uReveal);
+    // the diffuse map is sRGB and gets decoded to linear on sampling; a ShaderMaterial does not
+    // re-encode on its own, and without this the portrait rendered darker and more saturated than the
+    // original (forehead 244,170,134 vs 248,212,191 on the reference: exactly one missing gamma)
+    #include <colorspace_fragment>
   }
 `;
 
