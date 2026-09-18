@@ -36,37 +36,45 @@ export function makeBlueprintGeometry(geometry, keep = null, diagonals = true) {
 }
 
 /**
- * Line material with the sweep: a front runs top -> chin once per period and the lines fade
- * behind it (observed on the original: 0.96 s period, ~0.73 s travel, ~0.3 s fade at the dome).
+ * Line material with the sweep, in the form the original uses (read off its bundle, confirmed on the
+ * 60 s reference recording: period 1.000 s, tail matches a 4th power):
+ *
+ *   alpha = 0.1 * fract(-y * 10 - t)^4      y = vertex y in the GLB's own units, t in seconds
+ *
+ * Read it per vertex: fract(...) is a sawtooth that drops from 1 to 0 over one second and jumps
+ * back, so a point lights up to 0.1 when the front arrives and fades as (1 - age)^4: half gone
+ * after 0.16 s, invisible (< 0.003) after 0.6 s. Read it across the helmet at one instant: the
+ * front sits where the sawtooth wraps and moves down 0.1 units per second, i.e. top to chin
+ * (0.077 units) in 0.77 s, and the lines above it fade with distance. The colour is black; the
+ * lines are 1 px wide and not antialiased (the original renders them without MSAA).
+ *
+ * Drawn after the portrait relief with a depth test: lines behind the face are hidden, lines in
+ * front blend over the skin (at most 10 % darker). There is no self-occlusion: the far side of the
+ * shell and the inner lining draw too, exactly like the original's merged wireframe mesh.
  */
-export function makeBlueprintMaterial({ color = 0xa9aca4, opacity = 0.42 } = {}) {
+export function makeBlueprintMaterial({ color = 0x000000, opacity = 0.1 } = {}) {
   return new THREE.ShaderMaterial({
     transparent: true,
-    depthWrite: false,
+    depthWrite: true,
     uniforms: {
-      uTime: { value: 0 }, uPeriod: { value: 0.96 }, uSweep: { value: 0.76 }, uDecay: { value: 4.0 },
-      uFloor: { value: 0.0 }, uOpacity: { value: opacity }, uColor: { value: new THREE.Color(color) },
-      uMinY: { value: -1 }, uMaxY: { value: 1 },
+      uTime: { value: 0 }, uOpacity: { value: opacity }, uColor: { value: new THREE.Color(color) },
+      uFloor: { value: 0.0 }, // debug: 1 lights every line at full strength
     },
     vertexShader: /* glsl */ `
-      uniform float uMinY, uMaxY;
-      varying float vH;
+      varying float vY;
       void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vH = clamp((wp.y - uMinY) / (uMaxY - uMinY), 0.0, 1.0); // 1 = top, 0 = chin
-        gl_Position = projectionMatrix * viewMatrix * wp;
+        vY = position.y;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uTime, uPeriod, uSweep, uDecay, uFloor, uOpacity;
+      uniform float uTime, uOpacity, uFloor;
       uniform vec3 uColor;
-      varying float vH;
+      varying float vY;
       void main() {
-        float phase = fract(uTime / uPeriod);
-        float front = phase / uSweep;                 // 0 at the top -> 1 at the chin during uSweep of the period
-        float since = front - (1.0 - vH);             // > 0 once the front has passed this height
-        float pulse = since < 0.0 ? 0.0 : exp(-since * uDecay);
-        gl_FragColor = vec4(uColor, (uFloor + (1.0 - uFloor) * pulse) * uOpacity);
+        float phi = fract(-vY * 10.0 - uTime);
+        float a = max(pow(phi, 4.0), uFloor);
+        gl_FragColor = vec4(uColor, a * uOpacity);
       }
     `,
   });
@@ -75,6 +83,7 @@ export function makeBlueprintMaterial({ color = 0xa9aca4, opacity = 0.42 } = {})
 export function makeBlueprintLines(mesh, material, keep = null, diagonals = true) {
   const lines = new THREE.LineSegments(makeBlueprintGeometry(mesh.geometry, keep, diagonals), material);
   lines.name = 'blueprint-' + mesh.name;
+  lines.renderOrder = 1; // after the portrait relief (see makeBlueprintMaterial)
   mesh.getWorldPosition(lines.position);
   lines.quaternion.copy(mesh.getWorldQuaternion(new THREE.Quaternion()));
   lines.scale.copy(mesh.getWorldScale(new THREE.Vector3()));

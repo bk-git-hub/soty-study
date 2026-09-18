@@ -2,7 +2,6 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import Env from './Env';
-import { makeGhostShellMaterial, makeOutlineMaterial } from './HelmetGhost';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
@@ -83,10 +82,12 @@ function Portrait({ reveal }) {
   // The photo is square (2549^2) and fills a 1 x 1 plane at the origin: 127 % of the viewport height with
   // the camera above. (v1 had fitted 1.2 vh by overlay; the missing 6 % was the relief, not the plane.)
   const { size } = useThree();
+  // Writes depth and is drawn before the blueprint lines (renderOrder 0 vs 1), as the original's sort
+  // order ends up doing: lines behind the relief fail the depth test, lines in front blend over the skin.
   return (
-    <mesh position={[0, headY(size.width), 0]}>
+    <mesh position={[0, headY(size.width), 0]} renderOrder={0}>
       <planeGeometry args={[1, 1, 128, 128]} />
-      <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite={false} depthTest={false} />
+      <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite depthTest />
     </mesh>
   );
 }
@@ -96,14 +97,9 @@ function Helmet({ glassAmount }) {
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
   const group = useRef();
-  const { viewport, size } = useThree();
+  const { size } = useThree();
 
-  const { solid, glass } = useMemo(() => {
-    const solid = new THREE.MeshStandardMaterial({ map: base, roughness: 0.35, metalness: 0.2, transparent: true });
-    // ghost shell + swept UV-grid 'structure' lines, see HelmetGhost.js
-    const glass = makeGhostShellMaterial();
-    return { solid, glass };
-  }, [base]);
+  const solid = useMemo(() => new THREE.MeshStandardMaterial({ map: base, roughness: 0.35, metalness: 0.2, transparent: true }), [base]);
 
   const meshes = useMemo(() => { const out = []; scene.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }, [scene]);
 
@@ -114,21 +110,11 @@ function Helmet({ glassAmount }) {
   // silhouette: a ~12 px blank ring between the outline and the blueprint that the original does not have.
   // Measured at 1440x900, row y=100: lines now start 1 px behind the outline, as on the original.
   const blueprint = useMemo(() => meshes.map((m) => makeBlueprintLines(m, lineMat)), [meshes, lineMat]);
-  // Depth-only wall: front faces write depth first so lines on the far side / inner lining are culled.
-  const depthMat = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), []);
-  const depthGroup = useRef();
-  const outlineMat = useMemo(() => makeOutlineMaterial(), []);
-  const hullGroup = useRef();
+  // No self-occlusion and no separate outline, like the original: the silhouette band is the edge-on
+  // triangles of the shell drawn as lines; the portrait relief (drawn first, depth-tested) covers what
+  // sits behind the face. Measured on the recordings, row 100 at 1440x900, 40 ms after the front: rim
+  // 223-228 here vs 232-235 on the original; an extra inverted-hull outline only made it crisper and darker.
   const inner = useRef();
-  useEffect(() => {
-    // normalise line height against the placed helmet's world bounds (top = 1, chin = 0)
-    if (!inner.current) return;
-    inner.current.updateWorldMatrix(true, true);
-    const box = new THREE.Box3().setFromObject(inner.current);
-    glass.uniforms.uMinY.value = box.min.y; glass.uniforms.uMaxY.value = box.max.y;
-    lineMat.uniforms.uMinY.value = box.min.y; lineMat.uniforms.uMaxY.value = box.max.y;
-    outlineMat.uniforms.uMinY.value = box.min.y; outlineMat.uniforms.uMaxY.value = box.max.y;
-  }, [glass, lineMat, meshes]);
 
   const params = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
   const debugMode = params ? params.get('debug') : null;
@@ -138,52 +124,33 @@ function Helmet({ glassAmount }) {
   const debugWire = debugMode === 'wire';
   // ?debug=lines: freeze the pulse with every blueprint line lit, for still comparisons
   const debugLines = debugMode === 'lines';
-  // ?debug=shell: hide the blueprint lines to inspect the envelope/rim alone
-  const debugShell = debugMode === 'shell';
-  // ?debug=nowall: lines fully lit like 'lines' but without the depth prepass (to see what the wall hides)
-  const debugNoWall = debugMode === 'nowall';
   // ?debug=wire draws front-facing triangles only, so back-of-helmet edges do not fill the picture
   const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }) }), []);
   useFrame((state, dt) => {
     const g = glassAmount.current;
     if (debugWire) { for (const m of meshes) { m.visible = true; m.material = wireMats[m.name] || wireMats.helmet; } return; }
     for (const m of meshes) {
-      const ghost = g > 0.5;
-      m.material = ghost ? glass : solid;
+      // intro: the solid helmet fades out; in the ghost state the body is invisible on the original
+      // (measured: page colour between pulses), only the lines and the outline remain
+      m.material = solid;
       solid.opacity = 1 - g;
-      m.visible = true; // ghost state: every part drawn with the ghost material (faint body + thin fresnel rim = the outline)
+      m.visible = g < 0.999;
     }
-    glass.uniforms.uTime.value = state.clock.elapsedTime;
-    glass.uniforms.uOpacity.value = g;
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
-    lineMat.uniforms.uOpacity.value = debugShell ? 0 : 0.42 * g;
-    lineMat.uniforms.uFloor.value = debugLines || debugNoWall ? 1 : 0;
-    glass.uniforms.uRimFloor.value = debugLines || debugShell || debugNoWall ? 1 : 0.7; // frozen debug views show the rim fully
-    outlineMat.uniforms.uTime.value = state.clock.elapsedTime;
-    outlineMat.uniforms.uOpacity.value = 0.22 * g;
-    outlineMat.uniforms.uRimFloor.value = debugLines || debugShell || debugNoWall ? 1 : 0.7;
-    if (hullGroup.current) hullGroup.current.visible = g > 0.5 && !debugNoWall; // nowall = lines only
+    lineMat.uniforms.uOpacity.value = 0.1 * g;
+    lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     for (const l of blueprint) l.visible = g > 0.5;
-    if (depthGroup.current) depthGroup.current.visible = g > 0.5 && !debugNoWall; // the depth wall only matters in the ghost state
   });
 
   // The GLB is in its own small units (0.077 tall); the original's transform (scale, y, pitch) places it
   // around the portrait's head with no bounding-box fitting. v2 had fitted 0.68 vh and a y offset by
   // line-map extents; the numbers were within 2 % of this, the shape differences came from the camera.
   const scale = [heroS, heroS, heroS * HELMET_SCALE[2] / HELMET_SCALE[0]];
-  // inverted-hull outline: 2 px at the current viewport, converted to the helmet's object units
-  outlineMat.uniforms.uOffset.value = (2 * viewport.height / size.height) / heroS;
   return (
     <group ref={group} position={[0, heroY, 0]} rotation={[THREE.MathUtils.degToRad(pitchDeg), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down */}
       <group ref={inner} scale={scale}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
-        <group ref={hullGroup}>
-          {meshes.map((m) => <mesh key={'hull-' + m.name} geometry={m.geometry} material={outlineMat} />)}
-        </group>
-        <group ref={depthGroup}>
-          {meshes.map((m) => <mesh key={'depth-' + m.name} geometry={m.geometry} material={depthMat} />)}
-        </group>
       </group>
     </group>
   );
@@ -221,8 +188,11 @@ export default function HeroHead({ ready, progressRef }) {
     return () => cancelAnimationFrame(raf);
   }, [ready]);
 
+  // Original: pixel ratio capped at 1.25 on desktop (2 on phones) and no MSAA on this scene, which is
+  // what keeps the blueprint lines 1 px and crisp.
+  const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth > 768 ? 1.25 : 2);
   return (
-    <Canvas className="!absolute inset-0" dpr={[1, 1.5]} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
+    <Canvas className="!absolute inset-0" dpr={dpr} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
       <Suspense fallback={null}>
         <Portrait reveal={reveal} />
