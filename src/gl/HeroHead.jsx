@@ -9,23 +9,42 @@ import { gl as glAsset, model, hdri } from '../lib/assets';
 
 /*
  * The hero of the original is one shared WebGL canvas. The visible parts are:
- *  - a portrait plane using diffuse + depth + alpha maps. The depth map displaces UVs by the
- *    pointer offset, which reads as a subtle 3D parallax ("2.5D") on a flat photo.
+ *  - a portrait plane using diffuse + depth + alpha maps. The depth map displaces the plane's
+ *    vertices toward the camera (a relief), so the face reads as 3D under the perspective camera.
  *  - a Draco-compressed helmet GLB drawn as a transparent glass shell with a faint wireframe,
  *    which, after the intro, is what you see: the helmet "ghost" around the head.
- * Baseline: same ingredients, simplified shading. Tuned against the reference later.
+ * Not built yet: the original's eased pointer-follow (head plane rotates up to ~4 deg with the
+ * cursor, helmet at 2/3 of that, camera nudged 0.02) and the cursor-driven reveal of the helmet.
  */
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
 const DRACO = '/orig/runtime/draco/';
-// Near-orthographic view like the original (camera at z=3 for a 0.077-unit helmet): narrow fov, far camera.
-// The world-space viewport height at z=0 stays 2.68 (same as fov 30 at z=5), so all viewport-based sizes hold.
-const FOV = 10;
-const CAM_Z = 2.68 / (2 * Math.tan((FOV / 2) * Math.PI / 180));
+// Camera of the original's hero scene (read off its bundle while chasing a silhouette mismatch, see
+// private devlog 2026-09-18): perspective fov 15 at z = 3 on desktop. The world-space viewport height at
+// z = 0 is then 2 * 3 * tan(7.5 deg) = 0.79, and the portrait / helmet sizes below are absolute, not vh-based.
+const FOV = 15;
+const camZ = (width) => (width > 768 ? 3 : 3.75); // phones: camera further back, helmet not raised
+const CAM_Z = 3;
+// Original helmet transform: the GLB scene scaled (6.9, 6.9, 7.1), raised 0.05 (0 on phones), pitched
+// +0.06 pi (10.8 deg). The user had eyeballed 10 deg the day before; this confirms the tilt and adds the
+// 7.1 z-stretch.
+const HELMET_SCALE = [6.9, 6.9, 7.1];
+const helmetY = (width) => (width > 768 ? 0.05 : 0);
+const HELMET_PITCH_DEG = 0.06 * 180;
+// Original portrait: a 1 x 1 plane (128 x 128 segments) displaced along its normal by depth * 0.25, so the
+// nose / forehead / hair sit closer to the camera and read larger under the perspective (the hair top is
+// ~15 px higher than a flat plane at 1440x900).
+const PORTRAIT_DISPLACE = 0.25;
 
 const portraitVert = /* glsl */ `
+  uniform sampler2D uDepth; uniform float uDisplace;
   varying vec2 vUv;
-  void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  void main() {
+    vUv = uv;
+    // relief: push each vertex toward the camera by its depth (white = near), like three's displacementMap
+    vec3 p = position + normal * texture2D(uDepth, uv).r * uDisplace;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }
 `;
 const portraitFrag = /* glsl */ `
   uniform sampler2D uDiffuse; uniform sampler2D uDepth; uniform sampler2D uAlpha;
@@ -48,24 +67,21 @@ function Portrait({ reveal }) {
     glAsset('textures/head/webp/alpha.webp'),
   ]);
   diffuse.colorSpace = THREE.SRGBColorSpace;
-  const { viewport } = useThree();
   const uniforms = useMemo(() => ({
     uDiffuse: { value: diffuse }, uDepth: { value: depth }, uAlpha: { value: alpha },
     uMouse: { value: new THREE.Vector2() }, uStrength: { value: 0.03 }, uReveal: { value: 0 },
+    uDisplace: { value: PORTRAIT_DISPLACE },
   }), [diffuse, depth, alpha]);
   const mat = useRef();
   useFrame((_, dt) => {
     const u = mat.current.uniforms;
     u.uReveal.value += (reveal.current - u.uReveal.value) * (1 - Math.exp(-dt * 4));
   });
-  // The photo is portrait-oriented; fit it so the face sits in the upper-middle of the screen
-  // and the shoulders run off the bottom edge (observed framing).
-  const aspect = diffuse.image.width / diffuse.image.height;
-  // v1: measured against reference t05840 with an overlay: eyes at y=425/900, chin at 672/900
-  const h = viewport.height * 1.2;
+  // The photo is square (2549^2) and fills a 1 x 1 plane at the origin: 127 % of the viewport height with
+  // the camera above. (v1 had fitted 1.2 vh by overlay; the missing 6 % was the relief, not the plane.)
   return (
     <mesh position={[0, 0, 0]}>
-      <planeGeometry args={[h * aspect, h]} />
+      <planeGeometry args={[1, 1, 128, 128]} />
       <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite={false} depthTest={false} />
     </mesh>
   );
@@ -76,7 +92,7 @@ function Helmet({ glassAmount }) {
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
   const group = useRef();
-  const { viewport } = useThree();
+  const { viewport, size } = useThree();
 
   const { solid, glass } = useMemo(() => {
     const solid = new THREE.MeshStandardMaterial({ map: base, roughness: 0.35, metalness: 0.2, transparent: true });
@@ -85,16 +101,7 @@ function Helmet({ glassAmount }) {
     return { solid, glass };
   }, [base]);
 
-  // Normalise the model: GLBs come in arbitrary units, so measure the bounding box once and
-  // scale so the helmet's height is a fraction of the viewport, centred on its own middle.
-  const { meshes, fit } = useMemo(() => {
-    const meshes = [];
-    scene.traverse((o) => { if (o.isMesh) meshes.push(o); });
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    return { meshes, fit: { size, center } };
-  }, [scene]);
+  const meshes = useMemo(() => { const out = []; scene.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }, [scene]);
 
   const lineMat = useMemo(() => makeBlueprintMaterial(), []);
   // Every edge of every part (shell, aero cover with vents and ear pods, visor). An earlier "ear-cup
@@ -119,7 +126,11 @@ function Helmet({ glassAmount }) {
     outlineMat.uniforms.uMinY.value = box.min.y; outlineMat.uniforms.uMaxY.value = box.max.y;
   }, [glass, lineMat, meshes]);
 
-  const debugMode = import.meta.env.DEV ? new URLSearchParams(location.search).get('debug') : null;
+  const params = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
+  const debugMode = params ? params.get('debug') : null;
+  // ?pitch=<deg> / ?hy=<world units> / ?hs=<scale>: override the helmet pitch, height and scale for fitting shots
+  const num = (k, dflt) => { const v = params && params.get(k); return v === null || v === '' || isNaN(+v) ? dflt : +v; };
+  const pitchDeg = num('pitch', HELMET_PITCH_DEG), heroY = num('hy', helmetY(size.width)), heroS = num('hs', HELMET_SCALE[0]);
   const debugWire = debugMode === 'wire';
   // ?debug=lines: freeze the pulse with every blueprint line lit, for still comparisons
   const debugLines = debugMode === 'lines';
@@ -152,16 +163,15 @@ function Helmet({ glassAmount }) {
     if (depthGroup.current) depthGroup.current.visible = g > 0.5 && !debugNoWall; // the depth wall only matters in the ghost state
   });
 
-  // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
-  // in front of the portrait so it wraps the head)
-  // v2: reference helmet spans y 90-655 of 900 and the eye line sits mid-visor (measured on t07240)
-  const targetH = viewport.height * 0.68; // fitted: line-map extents vs the original (scripts/extents.mjs), width ratio 1.00
-  const s = targetH / fit.size.y;
-  const c = fit.center;
-  outlineMat.uniforms.uOffset.value = 0.006 / s; // 0.006 world units ~ 2 px at 1440x900
+  // The GLB is in its own small units (0.077 tall); the original's transform (scale, y, pitch) places it
+  // around the portrait's head with no bounding-box fitting. v2 had fitted 0.68 vh and a y offset by
+  // line-map extents; the numbers were within 2 % of this, the shape differences came from the camera.
+  const scale = [heroS, heroS, heroS * HELMET_SCALE[2] / HELMET_SCALE[0]];
+  // inverted-hull outline: 2 px at the current viewport, converted to the helmet's object units
+  outlineMat.uniforms.uOffset.value = (2 * viewport.height / size.height) / heroS;
   return (
-    <group ref={group} position={[-0.012, viewport.height * 0.104, 0.3]} rotation={[THREE.MathUtils.degToRad(10), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down (user: 10 deg looks right) */}  {/* y fitted: dome top row matches the original line map */}
-      <group ref={inner} scale={s} position={[-c.x * s, -c.y * s, -c.z * s]}>
+    <group ref={group} position={[0, heroY, 0]} rotation={[THREE.MathUtils.degToRad(pitchDeg), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down */}
+      <group ref={inner} scale={scale}>
         <primitive object={scene} />
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
         <group ref={hullGroup}>
@@ -176,11 +186,13 @@ function Helmet({ glassAmount }) {
 }
 
 function Rig({ progress }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   useFrame(() => {
     // scroll-out: the whole hero drifts up and away as the page scrolls into the marquee section
-    camera.position.y = -progress.current * 4;
-    camera.position.z = CAM_Z + progress.current * 3;
+    // (baseline guess, kept proportional to the 0.79-unit world height; the original moves its camera
+    // group by +0.1 and scrolls the composited plane with the page: to be matched later)
+    camera.position.y = -progress.current * 1.2;
+    camera.position.z = camZ(size.width) + progress.current * 0.9;
   });
   return null;
 }
