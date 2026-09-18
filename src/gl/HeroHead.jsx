@@ -97,37 +97,13 @@ function Helmet({ glassAmount }) {
   }, [scene]);
 
   const lineMat = useMemo(() => makeBlueprintMaterial(), []);
-  // Observed on the original's line map (every line ever drawn over 60 s): the shell and the top vents
-  // are drawn, the ear pods and the visor are not. 'plastic' holds vents (top) and ear pods (sides):
-  // keep only its upper part.
-  const blueprint = useMemo(() => {
-    // Ear pods: the lower part of the 'plastic' mesh, split left/right. Their centres and radius
-    // are used to cut the same pockets out of the shell lines (the shell models the ear cups too).
-    const plastic = meshes.find((m) => m.name === 'plastic');
-    const pods = [];
-    if (plastic) {
-      const pos = plastic.geometry.attributes.position; plastic.geometry.computeBoundingBox();
-      const { min, max } = plastic.geometry.boundingBox; const cut = min.y + 0.55 * (max.y - min.y);
-      for (const sign of [-1, 1]) {
-        let n = 0; const c = new THREE.Vector3();
-        for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); if (y < cut && Math.sign(x) === sign) { c.x += x; c.y += y; c.z += pos.getZ(i); n++; } }
-        if (!n) continue; c.divideScalar(n);
-        let r = 0; for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); if (y < cut && Math.sign(x) === sign) r = Math.max(r, Math.hypot(x - c.x, y - c.y, pos.getZ(i) - c.z)); }
-        pods.push({ c, r: r * 2.1 }); // the shell's ear-cup rings extend well beyond the pod itself
-      }
-    }
-    const inPod = (x, y, z) => pods.some((p) => Math.hypot(x - p.c.x, y - p.c.y, z - p.c.z) < p.r);
-    // the visor ('glass') is drawn too: the original shows a grid over the eye opening
-    return meshes.map((m) => {
-      let keep = null;
-      // 'plastic' (top/rear aero piece incl. its side wings) is drawn in full: the original's line map is
-      // wider at the upper sides than the shell alone
-      if (m.name === 'helmet') {
-        keep = (ax, ay, az, bx, by, bz) => !inPod((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2); // no ear-cup rings
-      }
-      return makeBlueprintLines(m, lineMat, keep);
-    });
-  }, [meshes, lineMat]);
+  // Every edge of every part (shell, aero cover with vents and ear pods, visor). An earlier "ear-cup
+  // pocket" filter (a sphere around the lower part of the aero piece, meant to drop the shell's ear-cup
+  // rings) was centred on the side wings instead and erased the shell edges just inside the dome
+  // silhouette: a ~12 px blank ring between the outline and the blueprint that the original does not have.
+  // Measured at 1440x900, row y=100: lines now start 1 px behind the outline, as on the original.
+  const blueprint = useMemo(() => meshes.map((m) => makeBlueprintLines(m, lineMat)), [meshes, lineMat]);
+  // Depth-only wall: front faces write depth first so lines on the far side / inner lining are culled.
   const depthMat = useMemo(() => new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), []);
   const depthGroup = useRef();
   const outlineMat = useMemo(() => makeOutlineMaterial(), []);
@@ -149,7 +125,10 @@ function Helmet({ glassAmount }) {
   const debugLines = debugMode === 'lines';
   // ?debug=shell: hide the blueprint lines to inspect the envelope/rim alone
   const debugShell = debugMode === 'shell';
-  const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55 }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55 }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55 }) }), []);
+  // ?debug=nowall: lines fully lit like 'lines' but without the depth prepass (to see what the wall hides)
+  const debugNoWall = debugMode === 'nowall';
+  // ?debug=wire draws front-facing triangles only, so back-of-helmet edges do not fill the picture
+  const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }) }), []);
   useFrame((state, dt) => {
     const g = glassAmount.current;
     if (debugWire) { for (const m of meshes) { m.visible = true; m.material = wireMats[m.name] || wireMats.helmet; } return; }
@@ -163,14 +142,14 @@ function Helmet({ glassAmount }) {
     glass.uniforms.uOpacity.value = g;
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
     lineMat.uniforms.uOpacity.value = debugShell ? 0 : 0.42 * g;
-    lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
-    glass.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.7; // frozen debug views show the rim fully
+    lineMat.uniforms.uFloor.value = debugLines || debugNoWall ? 1 : 0;
+    glass.uniforms.uRimFloor.value = debugLines || debugShell || debugNoWall ? 1 : 0.7; // frozen debug views show the rim fully
     outlineMat.uniforms.uTime.value = state.clock.elapsedTime;
     outlineMat.uniforms.uOpacity.value = 0.22 * g;
-    outlineMat.uniforms.uRimFloor.value = debugLines || debugShell ? 1 : 0.7;
-    if (hullGroup.current) hullGroup.current.visible = g > 0.5;
+    outlineMat.uniforms.uRimFloor.value = debugLines || debugShell || debugNoWall ? 1 : 0.7;
+    if (hullGroup.current) hullGroup.current.visible = g > 0.5 && !debugNoWall; // nowall = lines only
     for (const l of blueprint) l.visible = g > 0.5;
-    if (depthGroup.current) depthGroup.current.visible = g > 0.5; // the depth wall only matters in the ghost state
+    if (depthGroup.current) depthGroup.current.visible = g > 0.5 && !debugNoWall; // the depth wall only matters in the ghost state
   });
 
   // helmet height on screen: ~52% of the viewport (measured at z=0; the group sits slightly
