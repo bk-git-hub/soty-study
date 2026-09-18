@@ -30,6 +30,9 @@ const CAM_Z = 3;
 // 7.1 z-stretch.
 const HELMET_SCALE = [6.9, 6.9, 7.1];
 const helmetY = (width) => (width > 768 ? 0.05 : 0);
+// Phones: the portrait drops by 0.05 as the helmet does (both move together), so the head stays inside
+// the helmet across the breakpoint. Missing this made the face fill the visor below 768 px.
+const headY = (width) => (width > 768 ? 0 : -0.05);
 const HELMET_PITCH_DEG = 0.06 * 180;
 // Original portrait: a 1 x 1 plane (128 x 128 segments) displaced along its normal by depth * 0.25, so the
 // nose / forehead / hair sit closer to the camera and read larger under the perspective (the hair top is
@@ -79,8 +82,9 @@ function Portrait({ reveal }) {
   });
   // The photo is square (2549^2) and fills a 1 x 1 plane at the origin: 127 % of the viewport height with
   // the camera above. (v1 had fitted 1.2 vh by overlay; the missing 6 % was the relief, not the plane.)
+  const { size } = useThree();
   return (
-    <mesh position={[0, 0, 0]}>
+    <mesh position={[0, headY(size.width), 0]}>
       <planeGeometry args={[1, 1, 128, 128]} />
       <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite={false} depthTest={false} />
     </mesh>
