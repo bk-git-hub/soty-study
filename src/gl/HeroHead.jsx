@@ -118,6 +118,11 @@ function Portrait({ reveal, pointer, progress }) {
   const mat = useRef();
   const mesh = useRef();
   const { size } = useThree();
+  // dev-only: ?disp=<units> and ?seg=<n> override the relief depth and the plane's segment count
+  const dbg = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
+  const dnum = (k, dflt) => { const v = dbg && dbg.get(k); return v === null || v === '' || isNaN(+v) ? dflt : +v; };
+  const seg = dnum('seg', 128);
+  uniforms.uDisplace.value = dnum('disp', PORTRAIT_DISPLACE);
   useFrame((_, dt) => {
     const u = mat.current.uniforms;
     u.uReveal.value += (reveal.current - u.uReveal.value) * (1 - Math.exp(-dt * 4));
@@ -131,7 +136,7 @@ function Portrait({ reveal, pointer, progress }) {
   // order ends up doing: lines behind the relief fail the depth test, lines in front blend over the skin.
   return (
     <mesh ref={mesh} position={[0, headY(size.width), 0]} renderOrder={0}>
-      <planeGeometry args={[1, 1, 128, 128]} />
+      <planeGeometry args={[1, 1, seg, seg]} />
       <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite depthTest />
     </mesh>
   );
