@@ -12,8 +12,8 @@ import { gl as glAsset, model, hdri } from '../lib/assets';
  *    vertices toward the camera (a relief), so the face reads as 3D under the perspective camera.
  *  - a Draco-compressed helmet GLB drawn as a transparent glass shell with a faint wireframe,
  *    which, after the intro, is what you see: the helmet "ghost" around the head.
- * Not built yet: the original's eased pointer-follow (head plane rotates up to ~4 deg with the
- * cursor, helmet at 2/3 of that, camera nudged 0.02) and the cursor-driven reveal of the helmet.
+ * Not built yet: the cursor-driven reveal of the helmet (fluid simulation + idle cursor path) and
+ * the background noise pass.
  */
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
@@ -66,37 +66,78 @@ const portraitFrag = /* glsl */ `
   }
 `;
 
-function Portrait({ reveal }) {
+/*
+ * Pointer-follow, as the original does it (bundle: head class params movement.intensity 0.075 /
+ * ease 0.025, mouse class normalized = (clientX / w * 2 - 1, -(clientY / h * 2 - 1)), eased with
+ * MathUtils.damp(v, target, 0.025, dt) where dt = seconds * 100 capped at 1/30 s, i.e. a 2.5 / s decay):
+ *  - head plane:  rotation.y =  eased.x * 0.075,  rotation.x = -eased.y * 0.075 * (1 - scroll)  (x only > 768 px)
+ *  - helmet:      the head's rotation / 1.5, plus its fixed 10.8 deg pitch
+ *  - camera:      x = eased.x * 0.02,  y = -eased.y * 0.02 * (1 - scroll)  (y only > 768 px)
+ * The head turns toward the cursor side; the user reads the result as "moving slightly against the
+ * cursor" because the photo is a relief seen from a moving camera. Verified side by side, not assumed.
+ */
+const FOLLOW_INTENSITY = 0.075;
+const FOLLOW_DECAY = 2.5;
+const CAMERA_NUDGE = 0.02;
+function usePointer() {
+  const target = useRef(new THREE.Vector2());
+  const eased = useRef(new THREE.Vector2());
+  useEffect(() => {
+    const set = (x, y) => target.current.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
+    const onMouse = (e) => set(e.clientX, e.clientY);
+    const onTouch = (e) => { if (e.touches && e.touches[0]) set(e.touches[0].pageX, e.touches[0].pageY); };
+    document.addEventListener('mousemove', onMouse);
+    document.addEventListener('touchmove', onTouch, { passive: true });
+    return () => { document.removeEventListener('mousemove', onMouse); document.removeEventListener('touchmove', onTouch); };
+  }, []);
+  const update = (dt) => {
+    const k = 1 - Math.exp(-FOLLOW_DECAY * Math.min(dt, 1 / 30));
+    eased.current.x += (target.current.x - eased.current.x) * k;
+    eased.current.y += (target.current.y - eased.current.y) * k;
+  };
+  return { eased, update };
+}
+
+function Portrait({ reveal, pointer, progress }) {
   const [diffuse, depth, alpha] = useTexture([
     glAsset('textures/head/webp/diffuse.webp'),
     glAsset('textures/head/webp/depth.webp'),
     glAsset('textures/head/webp/alpha.webp'),
   ]);
   diffuse.colorSpace = THREE.SRGBColorSpace;
+  // The original flags the depth map sRGB too (bundle: textures.head.depth.colorSpace = SRGB), so the
+  // relief is driven by the *decoded* value: shallower than the raw map (mid greys drop to ~1/4).
+  // Found through the pointer-follow: with the raw map the face sat twice as deep, moved 60 % as much
+  // sideways and 120 % as much vertically as the original, and read 4 % too large.
+  depth.colorSpace = THREE.SRGBColorSpace;
   const uniforms = useMemo(() => ({
     uDiffuse: { value: diffuse }, uDepth: { value: depth }, uAlpha: { value: alpha },
     uMouse: { value: new THREE.Vector2() }, uStrength: { value: 0.03 }, uReveal: { value: 0 },
     uDisplace: { value: PORTRAIT_DISPLACE },
   }), [diffuse, depth, alpha]);
   const mat = useRef();
+  const mesh = useRef();
+  const { size } = useThree();
   useFrame((_, dt) => {
     const u = mat.current.uniforms;
     u.uReveal.value += (reveal.current - u.uReveal.value) * (1 - Math.exp(-dt * 4));
+    const m = pointer.eased.current;
+    mesh.current.rotation.y = m.x * FOLLOW_INTENSITY;
+    mesh.current.rotation.x = size.width > 768 ? -m.y * FOLLOW_INTENSITY * (1 - progress.current) : 0;
   });
   // The photo is square (2549^2) and fills a 1 x 1 plane at the origin: 127 % of the viewport height with
   // the camera above. (v1 had fitted 1.2 vh by overlay; the missing 6 % was the relief, not the plane.)
-  const { size } = useThree();
   // Writes depth and is drawn before the blueprint lines (renderOrder 0 vs 1), as the original's sort
   // order ends up doing: lines behind the relief fail the depth test, lines in front blend over the skin.
   return (
-    <mesh position={[0, headY(size.width), 0]} renderOrder={0}>
+    <mesh ref={mesh} position={[0, headY(size.width), 0]} renderOrder={0}>
       <planeGeometry args={[1, 1, 128, 128]} />
       <shaderMaterial ref={mat} vertexShader={portraitVert} fragmentShader={portraitFrag} uniforms={uniforms} transparent depthWrite depthTest />
     </mesh>
   );
 }
 
-function Helmet({ glassAmount }) {
+function Helmet({ glassAmount, pointer, progress }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
@@ -144,6 +185,11 @@ function Helmet({ glassAmount }) {
     lineMat.uniforms.uOpacity.value = 0.1 * g;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     for (const l of blueprint) l.visible = g > 0.5;
+    // pointer-follow: the head's rotation at 1/1.5, on top of the fixed pitch (see usePointer)
+    const m = pointer.eased.current;
+    const headX = size.width > 768 ? -m.y * FOLLOW_INTENSITY * (1 - progress.current) : 0;
+    group.current.rotation.x = THREE.MathUtils.degToRad(pitchDeg) + headX / 1.5;
+    group.current.rotation.y = (m.x * FOLLOW_INTENSITY) / 1.5;
   });
 
   // The GLB is in its own small units (0.077 tall); the original's transform (scale, y, pitch) places it
@@ -160,14 +206,18 @@ function Helmet({ glassAmount }) {
   );
 }
 
-function Rig({ progress }) {
+function Rig({ progress, pointer }) {
   const { camera, size } = useThree();
-  useFrame(() => {
+  useFrame((_, dt) => {
+    pointer.update(dt);
+    const m = pointer.eased.current, p = progress.current;
+    // pointer-follow: the camera is nudged with the eased cursor (see usePointer)
+    camera.position.x = m.x * CAMERA_NUDGE;
     // scroll-out: the whole hero drifts up and away as the page scrolls into the marquee section
     // (baseline guess, kept proportional to the 0.79-unit world height; the original moves its camera
     // group by +0.1 and scrolls the composited plane with the page: to be matched later)
-    camera.position.y = -progress.current * 1.2;
-    camera.position.z = camZ(size.width) + progress.current * 0.9;
+    camera.position.y = (size.width > 768 ? -m.y * CAMERA_NUDGE * (1 - p) : 0) - p * 1.2;
+    camera.position.z = camZ(size.width) + p * 0.9;
   });
   return null;
 }
@@ -195,13 +245,14 @@ export default function HeroHead({ ready, progressRef }) {
   // Original: pixel ratio capped at 1.25 on desktop (2 on phones) and no MSAA on this scene, which is
   // what keeps the blueprint lines 1 px and crisp.
   const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth > 768 ? 1.25 : 2);
+  const pointer = usePointer();
   return (
     <Canvas className="!absolute inset-0" dpr={dpr} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
       <Suspense fallback={null}>
-        <Portrait reveal={reveal} />
-        <Helmet glassAmount={glassAmount} />
-        <Rig progress={progress} />
+        <Portrait reveal={reveal} pointer={pointer} progress={progress} />
+        <Helmet glassAmount={glassAmount} pointer={pointer} progress={progress} />
+        <Rig progress={progress} pointer={pointer} />
       </Suspense>
       <ambientLight intensity={0.6} />
       <directionalLight position={[3, 5, 4]} intensity={1.4} />
