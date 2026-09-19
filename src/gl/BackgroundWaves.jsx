@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { REVEAL_MASK_GLSL } from './FluidSim';
 
 /*
  * The hero background: slowly flowing contour lines ("white waves").
@@ -109,10 +110,11 @@ const NOISE_FRAG = /* glsl */ `
 const SCREEN_FRAG = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
-  uniform sampler2D tNoise;
+  uniform sampler2D tNoise, tVelocity;
   uniform vec2 uTexel;
   uniform float uDebug;
   uniform vec3 uBackground, uOutline;
+  ${REVEAL_MASK_GLSL}
   void main() {
     float c = texture2D(tNoise, vUv).r;
     float e = 0.0;
@@ -122,11 +124,18 @@ const SCREEN_FRAG = /* glsl */ `
     if (texture2D(tNoise, vUv - vec2(0.0, uTexel.y)).r != c) e = 1.0;
     gl_FragColor = vec4(mix(uBackground, uOutline, e), 1.0);
     #include <colorspace_fragment>
-    if (uDebug > 0.5) gl_FragColor = vec4(texture2D(tNoise, vUv).rg, 0.0, 1.0); // ?debug=noise: raw band / value
+    if (uDebug > 1.5) {
+      // ?debug=mask: the fluid's velocity as a colour (white = still; x in red, y in green around 0.5)
+      // and the reveal mask it produces in flat magenta (a colour nothing else on the page has, so the
+      // measuring script can count it exactly)
+      vec2 v = texture2D(tVelocity, 0.025 + vUv * 0.95).xy;
+      vec3 field = mix(vec3(1.0), vec3(v * 0.5 + 0.5, 1.0), min(length(v), 1.0));
+      gl_FragColor = vec4(mix(field, vec3(1.0, 0.0, 1.0), revealMask(tVelocity, vUv)), 1.0);
+    } else if (uDebug > 0.5) gl_FragColor = vec4(texture2D(tNoise, vUv).rg, 0.0, 1.0); // ?debug=noise: raw band / value
   }
 `;
 
-export default function BackgroundWaves({ pointer }) {
+export default function BackgroundWaves({ pointer, reveal }) {
   const { size, gl } = useThree();
   // The noise lives at CSS-pixel resolution like the original's (not multiplied by the pixel ratio).
   // A plain 8-bit target is enough: it stores a 0/1 band and a 0..1 ramp.
@@ -149,8 +158,8 @@ export default function BackgroundWaves({ pointer }) {
   // output, so what reaches the screen is lighter than the hex: page 252,252,250 and lines 231,231,221
   // (measured), not 248,248,243 / 203,203,185. Same here: no sRGB -> linear conversion on the way in.
   const uniforms = useMemo(() => ({
-    tNoise: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) },
-    uDebug: { value: import.meta.env.DEV && new URLSearchParams(location.search).get('debug') === 'noise' ? 1 : 0 },
+    tNoise: { value: null }, tVelocity: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) },
+    uDebug: { value: import.meta.env.DEV ? ({ noise: 1, mask: 2 })[new URLSearchParams(location.search).get('debug')] || 0 : 0 },
     uBackground: { value: new THREE.Color().setStyle(COLOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
     uOutline: { value: new THREE.Color().setStyle(COLOR_OUTLINE, THREE.LinearSRGBColorSpace) },
   }), []);
@@ -168,6 +177,7 @@ export default function BackgroundWaves({ pointer }) {
     // writing to ours after mount never reaches the shader (the texture stayed null = black for an hour).
     const su = screen.current.material.uniforms;
     su.tNoise.value = fbo.texture;
+    su.tVelocity.value = reveal.texture;
     su.uTexel.value.set(1 / size.width, 1 / size.height);
   });
 

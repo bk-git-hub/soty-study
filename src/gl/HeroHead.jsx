@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import Env from './Env';
 import BackgroundWaves from './BackgroundWaves';
+import RevealMask from './RevealMask';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
@@ -84,10 +85,13 @@ const CAMERA_NUDGE = 0.02;
 function usePointer() {
   const target = useRef(new THREE.Vector2());
   const eased = useRef(new THREE.Vector2());
+  // time (s) of the last real pointer move; null until the first one. The reveal's automatic cursor
+  // takes over when this gets old (see RevealMask).
+  const lastMove = useRef(null);
   useEffect(() => {
     const set = (x, y) => target.current.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
-    const onMouse = (e) => set(e.clientX, e.clientY);
-    const onTouch = (e) => { if (e.touches && e.touches[0]) set(e.touches[0].pageX, e.touches[0].pageY); };
+    const onMouse = (e) => { set(e.clientX, e.clientY); lastMove.current = performance.now() / 1000; };
+    const onTouch = (e) => { if (e.touches && e.touches[0]) { set(e.touches[0].pageX, e.touches[0].pageY); lastMove.current = performance.now() / 1000; } };
     document.addEventListener('mousemove', onMouse);
     document.addEventListener('touchmove', onTouch, { passive: true });
     return () => { document.removeEventListener('mousemove', onMouse); document.removeEventListener('touchmove', onTouch); };
@@ -104,7 +108,7 @@ function usePointer() {
     pace.current += (target.current.distanceTo(prev.current) - pace.current) * (1 - Math.exp(-PACE_DECAY * d));
     prev.current.copy(target.current);
   };
-  return { eased, pace, update };
+  return { target, eased, pace, lastMove, update };
 }
 
 function Portrait({ reveal, pointer, progress }) {
@@ -260,10 +264,14 @@ export default function HeroHead({ ready, progressRef }) {
   // what keeps the blueprint lines 1 px and crisp.
   const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth > 768 ? 1.25 : 2);
   const pointer = usePointer();
+  // shared by everything the cursor "paints": { texture } = the fluid's velocity field (see RevealMask)
+  const revealMask = useMemo(() => ({ texture: null }), []);
   return (
     <Canvas className="!absolute inset-0" dpr={dpr} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
-      <BackgroundWaves pointer={pointer} />
+      {/* mounted before the waves so its frame callback (the simulation step) runs before they draw */}
+      <RevealMask pointer={pointer} reveal={revealMask} />
+      <BackgroundWaves pointer={pointer} reveal={revealMask} />
       <Suspense fallback={null}>
         <Portrait reveal={reveal} pointer={pointer} progress={progress} />
         <Helmet glassAmount={glassAmount} pointer={pointer} progress={progress} />
