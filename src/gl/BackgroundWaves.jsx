@@ -25,6 +25,10 @@ import { REVEAL_MASK_GLSL } from './FluidSim';
 // params of the original's head scene
 const COLOR_BACKGROUND = '#F8F8F3';
 const COLOR_OUTLINE = '#CBCBB9';
+// inside the cursor paint: band 0, band 1, and the borders between them
+const COLOR_CURSOR_BACKGROUND = '#E8E8DF';
+const COLOR_CURSOR_FOREGROUND = '#CFD2C5';
+const COLOR_CURSOR_OUTLINE = '#E8E8DF';
 const SCALE = 1, SPEED = 0.1, DISTORT_SCALE = 1, DISTORT_INTENSITY = 0.5, NOISE_DETAIL = 3;
 const CURSOR_INTENSITY = 0.15, CURSOR_SCALE = 3, CURSOR_BOUNCE = -0.75;
 
@@ -113,7 +117,7 @@ const SCREEN_FRAG = /* glsl */ `
   uniform sampler2D tNoise, tVelocity;
   uniform vec2 uTexel;
   uniform float uDebug;
-  uniform vec3 uBackground, uOutline;
+  uniform vec3 uBackground, uOutline, uCursorBackground, uCursorForeground, uCursorOutline;
   ${REVEAL_MASK_GLSL}
   void main() {
     float c = texture2D(tNoise, vUv).r;
@@ -122,7 +126,12 @@ const SCREEN_FRAG = /* glsl */ `
     if (texture2D(tNoise, vUv - vec2(uTexel.x, 0.0)).r != c) e = 1.0;
     if (texture2D(tNoise, vUv + vec2(0.0, uTexel.y)).r != c) e = 1.0;
     if (texture2D(tNoise, vUv - vec2(0.0, uTexel.y)).r != c) e = 1.0;
-    gl_FragColor = vec4(mix(uBackground, uOutline, e), 1.0);
+    vec3 page = mix(uBackground, uOutline, e);
+    // The paint: inside the reveal mask the same bands are *filled* (band 0 / band 1 in two greys) and
+    // the borders take the lighter grey, so the stroke follows the grain of the waves instead of being
+    // a flat blob. Outside the mask only the borders show.
+    vec3 painted = mix(mix(uCursorBackground, uCursorForeground, c), uCursorOutline, e);
+    gl_FragColor = vec4(mix(page, painted, revealMask(tVelocity, vUv)), 1.0);
     #include <colorspace_fragment>
     if (uDebug > 1.5) {
       // ?debug=mask: the fluid's velocity as a colour (white = still; x in red, y in green around 0.5)
@@ -162,6 +171,9 @@ export default function BackgroundWaves({ pointer, reveal }) {
     uDebug: { value: import.meta.env.DEV ? ({ noise: 1, mask: 2 })[new URLSearchParams(location.search).get('debug')] || 0 : 0 },
     uBackground: { value: new THREE.Color().setStyle(COLOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
     uOutline: { value: new THREE.Color().setStyle(COLOR_OUTLINE, THREE.LinearSRGBColorSpace) },
+    uCursorBackground: { value: new THREE.Color().setStyle(COLOR_CURSOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
+    uCursorForeground: { value: new THREE.Color().setStyle(COLOR_CURSOR_FOREGROUND, THREE.LinearSRGBColorSpace) },
+    uCursorOutline: { value: new THREE.Color().setStyle(COLOR_CURSOR_OUTLINE, THREE.LinearSRGBColorSpace) },
   }), []);
 
   useFrame((state) => {
