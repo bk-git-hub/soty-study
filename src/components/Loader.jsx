@@ -10,6 +10,11 @@ import { cdn, rive as riveUrl } from '../lib/assets';
  *     "LANDO NORRIS" small at the bottom;
  *  2. exit: a window in the shape of the "4" opens in the centre, grows gently to about 4x in ~0.25 s,
  *     then explodes past the screen edges in ~0.17 s. The hero behind is already in its final state.
+ *     That "4" is not a separate shape: it is the mark's own negative space, the gap between the L and
+ *     the N (LN4), so the exit zooms *through the logo* into the page. The user caught this; I had
+ *     logged it as "a 4-shaped window, not the mark". Consistent with the file (its logo artboard is
+ *     built from parts named L, N and 4) and with the window starting exactly where the mark sits; not
+ *     checked by overlaying the gap and the window at scale 1.
  * There is no mark shrinking to a dot and no diagonal wipe: that was the day-0 guess.
  *
  * Both steps are one Rive file, the same one the original uses for page transitions
