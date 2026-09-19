@@ -9,8 +9,12 @@ import * as THREE from 'three';
  * Reading and writing the same texture is not allowed on a GPU, hence two of each ("ping-pong").
  *
  * The steps are Jos Stam's Stable Fluids, in the same arrangement as the open-source fluid-three demo
- * (mnmxmx) that the original site appears to build on. Written from scratch here; the numbers (grid
- * size, time step, fade, force, splat size, iteration count) are the original's, read off its bundle:
+ * (mnmxmx) that the original site appears to build on.
+ * Provenance, stated plainly: this is a re-implementation made after reading the original bundle's
+ * shaders, not a reconstruction from observation. Structure, names and comments are mine; the maths of
+ * each pass is equivalent to the original's, quirks included (the 2-cell pressure stencil, the
+ * 4 + straightness denominator, the lopsided mask rule), and the numbers (grid size, time step, fade,
+ * force, splat size, iteration count) are the original's:
  *   1. advect    move the velocity field along itself (things drift with the flow), fade it by 4 %
  *   2. splat     add the cursor's movement as a force in a soft disc around the cursor
  *   3. diverge   measure how much each cell is a source / sink
