@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gsap, ScrollTrigger } from '../../lib/gsap';
 import { useNavTheme } from '../../lib/navTheme';
 import { cdn } from '../../lib/assets';
 import HeroHead from '../../gl/HeroHead';
+import TrackMini from '../../gl/TrackMini';
+import HeroTouchLock from '../../components/HeroTouchLock';
 import RiveCanvas from '../../components/RiveCanvas';
 import Eyebrow from '../../components/Eyebrow';
 
@@ -15,12 +17,15 @@ import Eyebrow from '../../components/Eyebrow';
 export default function Hero({ ready, onHeroReady }) {
   const ref = useRef(null);
   const progress = useRef(0);
+  // the touch lock button lives only while the hero fills the screen (state changes twice per visit,
+  // not per scroll event)
+  const [onHero, setOnHero] = useState(true);
   useNavTheme(ref, 'dark');
 
   useEffect(() => {
     const st = ScrollTrigger.create({
       trigger: ref.current, start: 'top top', end: '+=100%', scrub: true,
-      onUpdate: (self) => { progress.current = self.progress; },
+      onUpdate: (self) => { progress.current = self.progress; setOnHero(self.progress < 0.3); },
     });
     return () => st.kill();
   }, []);
@@ -42,17 +47,30 @@ export default function Hero({ ready, onHeroReady }) {
             <svg className="absolute inset-0 -z-[1] w-full h-full" viewBox="0 0 119 244" fill="none" aria-hidden>
               <path d="M118.5 6v232a5.5 5.5 0 0 1-5.5 5.5H6A5.5 5.5 0 0 1 .5 238V25A5.5 5.5 0 0 1 6 19.5h46.346c4.695 0 9.167-2 12.297-5.498l7.46-8.337A15.5 15.5 0 0 1 83.653.5H113a5.5 5.5 0 0 1 5.5 5.5Z" stroke="currentColor" />
             </svg>
-            <div className="pt-[1.7rem] px-[.6rem]"><Eyebrow>Next Race</Eyebrow></div>
-            <Link to="/calendar" className="flex flex-col items-center justify-center gap-[calc(var(--gap)*.5)] h-[6.9rem]">
-              <RiveCanvas file="circuits" artboard="circuits" stateMachine="circuits" className="w-[4.5rem] h-[3.8rem]" />
-              <div className="flex gap-1"><Eyebrow>Baku</Eyebrow><Eyebrow>gp</Eyebrow></div>
+            {/* Inner layout as measured on the original's DOM at 1440x900 (1 rem = 13.33 px): a 17 px notch
+                for the label above the outline's lowered left shoulder, then two 92 px rows split by a
+                hairline. Day 0 had the label ~25 px lower, which pushed the circuit and its name down
+                (circuit centre at y 760 instead of 734). */}
+            {/* Positioning goes on flex wrappers, never on <Eyebrow>: it carries its own `relative inline-block`,
+                which beats an `absolute` passed in (the label then stays in flow and `bottom` lifts it), and
+                as an inline-block in a plain block it sinks ~8 px into the parent's 20 px line box. */}
+            <div className="h-[1.275rem]" />
+            <div className="absolute left-0 top-[0.05rem] flex"><Eyebrow>Next Race</Eyebrow></div>
+            <Link to="/calendar" className="relative block h-[6.9rem]">
+              {/* the next race's circuit as a spinning 3D outline (was a flat Rive drawing on day 0);
+                  centred 37 px below the row's top, its name centred 81 px below */}
+              <TrackMini circuit="baku" className="absolute inset-x-0 top-[0.65rem] h-[4.25rem]" />
+              <div className="absolute inset-x-0 bottom-[0.5rem] flex justify-center gap-1"><Eyebrow>Baku</Eyebrow><Eyebrow>gp</Eyebrow></div>
             </Link>
-            <div className="mx-[.6rem] h-px bg-current opacity-50" />
-            <div className="flex flex-col items-center justify-center gap-[calc(var(--gap)*.5)] h-[6.9rem]">
-              <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_play" className="w-[5rem] h-[2.6rem]" />
-              <Eyebrow className="text-center">mclaren f1 since 2019</Eyebrow>
+            <div className="mx-[.75rem] h-px bg-current" />
+            <div className="relative h-[6.9rem]">
+              <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_play" className="absolute left-1/2 -translate-x-1/2 top-[0.95rem] w-[5.4rem] h-[2.95rem]" />
+              <div className="absolute inset-x-[0.6rem] bottom-[0.95rem] flex justify-center"><Eyebrow className="text-center">mclaren f1<br />since 2019</Eyebrow></div>
             </div>
           </div>
+
+          {/* touch devices: lock scrolling to paint the helmet with a finger */}
+          <HeroTouchLock visible={ready && onHero} />
 
           {/* mobile title */}
           <div className="hidden max-[991px]:flex absolute inset-x-0 top-[7rem] flex-col items-center gap-3">
