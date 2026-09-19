@@ -138,9 +138,18 @@ const PROJECT_FRAG = /* glsl */ `
  * right. The texture is read through a 2.5 % inset so the still wall around the pool never shows.
  */
 export const REVEAL_MASK_GLSL = /* glsl */ `
-  float revealMask(sampler2D tVelocity, vec2 screenUv) {
-    vec2 v = texture2D(tVelocity, 0.025 + screenUv * 0.95).xy;
+  float revealMaskAt(sampler2D tVelocity, vec2 fieldUv) {
+    vec2 v = texture2D(tVelocity, fieldUv).xy;
     return step(0.1, 0.5 * length(v) * (1.0 - v.x));
+  }
+  // background and helmet composite: inset on both axes
+  float revealMask(sampler2D tVelocity, vec2 screenUv) {
+    return revealMaskAt(tVelocity, 0.025 + screenUv * 0.95);
+  }
+  // the head photo (its switch to the shadowed version) reads the field with the inset on y only, as
+  // the original's head material does: on the face the two masks differ by under 1 % of the page width
+  float revealMaskHead(sampler2D tVelocity, vec2 screenUv) {
+    return revealMaskAt(tVelocity, vec2(screenUv.x, 0.025 + screenUv.y * 0.95));
   }
 `;
 

@@ -4,6 +4,8 @@ import { useGLTF, useTexture } from '@react-three/drei';
 import Env from './Env';
 import BackgroundWaves from './BackgroundWaves';
 import RevealMask from './RevealMask';
+import HelmetPaint from './HelmetPaint';
+import { REVEAL_MASK_GLSL } from './FluidSim';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
@@ -12,10 +14,11 @@ import { gl as glAsset, model, hdri } from '../lib/assets';
  * The hero of the original is one shared WebGL canvas. The visible parts are:
  *  - a portrait plane using diffuse + depth + alpha maps. The depth map displaces the plane's
  *    vertices toward the camera (a relief), so the face reads as 3D under the perspective camera.
- *  - a Draco-compressed helmet GLB drawn as a transparent glass shell with a faint wireframe,
- *    which, after the intro, is what you see: the helmet "ghost" around the head.
- * Not built yet: the cursor-driven reveal of the helmet (fluid simulation + idle cursor path) and
- * the background noise pass.
+ *  - a Draco-compressed helmet GLB, seen two ways: as blueprint lines that pulse around the head
+ *    (BlueprintLines), and as the real painted helmet, which only shows where the cursor's fluid
+ *    trail has "painted" it on (FluidSim -> RevealMask -> HelmetPaint);
+ *  - the flowing contour background, painted by the same trail (BackgroundWaves).
+ * Not built yet: the scroll-out choreography, the helmet hover, the real intro.
  */
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
@@ -52,13 +55,21 @@ const portraitVert = /* glsl */ `
 `;
 const portraitFrag = /* glsl */ `
   uniform sampler2D uDiffuse; uniform sampler2D uDepth; uniform sampler2D uAlpha;
+  uniform sampler2D uShadow; uniform sampler2D tVelocity; uniform vec2 uBuffer; uniform float uMaskOn;
   uniform vec2 uMouse; uniform float uStrength; uniform float uReveal;
   varying vec2 vUv;
+  ${REVEAL_MASK_GLSL}
   void main() {
     // depth in [0,1]; centre it so near pixels move one way and far pixels the other
     float d = texture2D(uDepth, vUv).r - 0.5;
     vec2 uv = vUv + d * uMouse * uStrength;
     vec4 c = texture2D(uDiffuse, uv);
+    // Where the helmet is painted on, the photo switches to a second version of itself with the
+    // helmet's shadow baked in (darker neck and collar). Most of it is hidden behind the helmet; what
+    // shows is the shadow on everything the helmet does not cover. gl_FragCoord / buffer size = this
+    // pixel's position on the page, which is where the mask lives.
+    float painted = revealMaskHead(tVelocity, gl_FragCoord.xy / uBuffer) * uMaskOn;
+    c = mix(c, texture2D(uShadow, uv), painted);
     float a = texture2D(uAlpha, uv).r;
     gl_FragColor = vec4(c.rgb, a * uReveal);
     // the diffuse map is sRGB and gets decoded to linear on sampling; a ShaderMaterial does not
@@ -111,13 +122,15 @@ function usePointer() {
   return { target, eased, pace, lastMove, update };
 }
 
-function Portrait({ reveal, pointer, progress }) {
-  const [diffuse, depth, alpha] = useTexture([
+function Portrait({ reveal, pointer, progress, mask }) {
+  const [diffuse, depth, alpha, shadow] = useTexture([
     glAsset('textures/head/webp/diffuse.webp'),
     glAsset('textures/head/webp/depth.webp'),
     glAsset('textures/head/webp/alpha.webp'),
+    glAsset('textures/head/webp/shadow-softer-edit.webp'),
   ]);
   diffuse.colorSpace = THREE.SRGBColorSpace;
+  shadow.colorSpace = THREE.SRGBColorSpace;
   // The original flags the depth map sRGB too (bundle: textures.head.depth.colorSpace = SRGB), so the
   // relief is driven by the *decoded* value: shallower than the raw map (mid greys drop to ~1/4).
   // Found through the pointer-follow: with the raw map the face sat twice as deep, moved 60 % as much
@@ -127,10 +140,11 @@ function Portrait({ reveal, pointer, progress }) {
     uDiffuse: { value: diffuse }, uDepth: { value: depth }, uAlpha: { value: alpha },
     uMouse: { value: new THREE.Vector2() }, uStrength: { value: 0.03 }, uReveal: { value: 0 },
     uDisplace: { value: PORTRAIT_DISPLACE },
-  }), [diffuse, depth, alpha]);
+    uShadow: { value: shadow }, tVelocity: { value: null }, uBuffer: { value: new THREE.Vector2(1, 1) }, uMaskOn: { value: 0 },
+  }), [diffuse, depth, alpha, shadow]);
   const mat = useRef();
   const mesh = useRef();
-  const { size } = useThree();
+  const { size, gl } = useThree();
   // dev-only: ?disp=<units> and ?seg=<n> override the relief depth and the plane's segment count
   const dbg = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
   const dnum = (k, dflt) => { const v = dbg && dbg.get(k); return v === null || v === '' || isNaN(+v) ? dflt : +v; };
@@ -139,6 +153,10 @@ function Portrait({ reveal, pointer, progress }) {
   useFrame((_, dt) => {
     const u = mat.current.uniforms;
     u.uReveal.value += (reveal.current - u.uReveal.value) * (1 - Math.exp(-dt * 4));
+    // the reveal mask, in page space (see the fragment shader)
+    u.tVelocity.value = mask.texture;
+    u.uMaskOn.value = mask.texture ? 1 : 0;
+    gl.getDrawingBufferSize(u.uBuffer.value);
     const m = pointer.eased.current;
     mesh.current.rotation.y = m.x * FOLLOW_INTENSITY;
     mesh.current.rotation.x = size.width > 768 ? -m.y * FOLLOW_INTENSITY * (1 - progress.current) : 0;
@@ -155,7 +173,7 @@ function Portrait({ reveal, pointer, progress }) {
   );
 }
 
-function Helmet({ glassAmount, pointer, progress }) {
+function Helmet({ glassAmount, pointer, progress, rig }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
   const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
   base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
@@ -177,7 +195,8 @@ function Helmet({ glassAmount, pointer, progress }) {
   // triangles of the shell drawn as lines; the portrait relief (drawn first, depth-tested) covers what
   // sits behind the face. Measured on the recordings, row 100 at 1440x900, 40 ms after the front: rim
   // 223-228 here vs 232-235 on the original; an extra inverted-hull outline only made it crisper and darker.
-  const inner = useRef();
+  // the scaled group; the painted helmet (HelmetPaint) copies its world matrix so both stay registered
+  const inner = rig;
 
   const params = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
   const debugMode = params ? params.get('debug') : null;
@@ -266,6 +285,7 @@ export default function HeroHead({ ready, progressRef }) {
   const pointer = usePointer();
   // shared by everything the cursor "paints": { texture } = the fluid's velocity field (see RevealMask)
   const revealMask = useMemo(() => ({ texture: null }), []);
+  const helmetRig = useRef();
   return (
     <Canvas className="!absolute inset-0" dpr={dpr} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
@@ -273,8 +293,9 @@ export default function HeroHead({ ready, progressRef }) {
       <RevealMask pointer={pointer} reveal={revealMask} />
       <BackgroundWaves pointer={pointer} reveal={revealMask} />
       <Suspense fallback={null}>
-        <Portrait reveal={reveal} pointer={pointer} progress={progress} />
-        <Helmet glassAmount={glassAmount} pointer={pointer} progress={progress} />
+        <Portrait reveal={reveal} pointer={pointer} progress={progress} mask={revealMask} />
+        <Helmet glassAmount={glassAmount} pointer={pointer} progress={progress} rig={helmetRig} />
+        <HelmetPaint reveal={revealMask} rig={helmetRig} opacity={glassAmount} />
         <Rig progress={progress} pointer={pointer} />
       </Suspense>
       <ambientLight intensity={0.6} />
