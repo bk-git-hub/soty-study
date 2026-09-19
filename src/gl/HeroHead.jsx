@@ -122,7 +122,7 @@ function usePointer() {
   return { target, eased, pace, lastMove, update };
 }
 
-function Portrait({ reveal, pointer, progress, mask }) {
+function Portrait({ pointer, progress, mask }) {
   const [diffuse, depth, alpha, shadow] = useTexture([
     glAsset('textures/head/webp/diffuse.webp'),
     glAsset('textures/head/webp/depth.webp'),
@@ -138,7 +138,7 @@ function Portrait({ reveal, pointer, progress, mask }) {
   depth.colorSpace = THREE.SRGBColorSpace;
   const uniforms = useMemo(() => ({
     uDiffuse: { value: diffuse }, uDepth: { value: depth }, uAlpha: { value: alpha },
-    uMouse: { value: new THREE.Vector2() }, uStrength: { value: 0.03 }, uReveal: { value: 0 },
+    uMouse: { value: new THREE.Vector2() }, uStrength: { value: 0.03 }, uReveal: { value: 1 },
     uDisplace: { value: PORTRAIT_DISPLACE },
     uShadow: { value: shadow }, tVelocity: { value: null }, uBuffer: { value: new THREE.Vector2(1, 1) }, uMaskOn: { value: 0 },
   }), [diffuse, depth, alpha, shadow]);
@@ -152,7 +152,6 @@ function Portrait({ reveal, pointer, progress, mask }) {
   uniforms.uDisplace.value = dnum('disp', PORTRAIT_DISPLACE);
   useFrame((_, dt) => {
     const u = mat.current.uniforms;
-    u.uReveal.value += (reveal.current - u.uReveal.value) * (1 - Math.exp(-dt * 4));
     // the reveal mask, in page space (see the fragment shader)
     u.tVelocity.value = mask.texture;
     u.uMaskOn.value = mask.texture ? 1 : 0;
@@ -173,14 +172,10 @@ function Portrait({ reveal, pointer, progress, mask }) {
   );
 }
 
-function Helmet({ glassAmount, pointer, progress, rig }) {
+function Helmet({ pointer, progress, rig }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
-  const base = useTexture(glAsset('textures/helmet/webp/gold/Norris_Helmet_mat_BaseColor.webp'));
-  base.colorSpace = THREE.SRGBColorSpace; base.flipY = false;
   const group = useRef();
   const { size } = useThree();
-
-  const solid = useMemo(() => new THREE.MeshStandardMaterial({ map: base, roughness: 0.35, metalness: 0.2, transparent: true }), [base]);
 
   const meshes = useMemo(() => { const out = []; scene.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }, [scene]);
 
@@ -209,19 +204,10 @@ function Helmet({ glassAmount, pointer, progress, rig }) {
   // ?debug=wire draws front-facing triangles only, so back-of-helmet edges do not fill the picture
   const wireMats = useMemo(() => ({ helmet: new THREE.MeshBasicMaterial({ color: 0xc03030, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }), glass: new THREE.MeshBasicMaterial({ color: 0x3050c0, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }), plastic: new THREE.MeshBasicMaterial({ color: 0x30a040, wireframe: true, transparent: true, opacity: 0.55, side: THREE.FrontSide }) }), []);
   useFrame((state, dt) => {
-    const g = glassAmount.current;
     if (debugWire) { for (const m of meshes) { m.visible = true; m.material = wireMats[m.name] || wireMats.helmet; } return; }
-    for (const m of meshes) {
-      // intro: the solid helmet fades out; in the ghost state the body is invisible on the original
-      // (measured: page colour between pulses), only the lines and the outline remain
-      m.material = solid;
-      solid.opacity = 1 - g;
-      m.visible = g < 0.999;
-    }
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
-    lineMat.uniforms.uOpacity.value = 0.1 * g;
+    lineMat.uniforms.uOpacity.value = 0.1;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
-    for (const l of blueprint) l.visible = g > 0.5;
     // pointer-follow: the head's rotation at 1/1.5, on top of the fixed pitch (see usePointer)
     const m = pointer.eased.current;
     const headX = size.width > 768 ? -m.y * FOLLOW_INTENSITY * (1 - progress.current) : 0;
@@ -236,7 +222,8 @@ function Helmet({ glassAmount, pointer, progress, rig }) {
   return (
     <group ref={group} position={[0, heroY, 0]} rotation={[THREE.MathUtils.degToRad(pitchDeg), 0, 0]}> {/* +X pitch: crown toward the viewer, visor looks down */}
       <group ref={inner} scale={scale}>
-        <primitive object={scene} />
+        {/* the body itself is never drawn here: the painted helmet lives in HelmetPaint. ?debug=wire only */}
+        {debugWire && <primitive object={scene} />}
         {blueprint.map((l) => <primitive key={l.name} object={l} />)}
       </group>
     </group>
@@ -259,25 +246,36 @@ function Rig({ progress, pointer }) {
   return null;
 }
 
-export default function HeroHead({ ready, progressRef }) {
-  const reveal = useRef(0);
-  const glassAmount = useRef(0);
+// Tells the page that the hero can be shown: everything under <Suspense> has loaded (this component is
+// inside it), the studio HDRI has arrived (the painted helmet is black without it), and the frames have
+// become *smooth*. The loader waits for this before it opens.
+// Why smooth and not just "a few frames": the first frames after loading are the most expensive of the
+// whole session (shader compiles, texture uploads, the helmet material recompiling when the HDRI lands).
+// Reporting at once made the loader play its 0.5 s exit inside a 0.58 s freeze: on the capture the lime
+// was simply gone from one frame to the next.
+const SMOOTH_FRAME = 1 / 40; // s
+const SMOOTH_RUN = 12;       // consecutive frames
+const GIVE_UP_AFTER = 3;     // s of trying once everything has loaded (slow machines still get in)
+function ReadyProbe({ onReady }) {
+  const { scene } = useThree();
+  const run = useRef(0);
+  const waited = useRef(0);
+  const sent = useRef(false);
+  useFrame((_, dt) => {
+    if (sent.current || !scene.environment) return;
+    waited.current += dt;
+    run.current = dt < SMOOTH_FRAME ? run.current + 1 : 0;
+    if (run.current >= SMOOTH_RUN || waited.current > GIVE_UP_AFTER) { sent.current = true; onReady?.(); }
+  });
+  return null;
+}
+
+// The hero has no intro of its own. On the original the loader's "4" opens onto a hero that is already
+// in its final state (photo, pulsing blueprint, the automatic cursor painting); the day-0 build had
+// invented a solid helmet dissolving into glass here.
+export default function HeroHead({ onReady, progressRef }) {
   const fallback = useRef(0);
   const progress = progressRef || fallback;
-
-  useEffect(() => {
-    // intro: portrait reveals with the loader wipe, then the solid helmet dissolves into glass
-    if (!ready) return;
-    reveal.current = 1;
-    let raf; const start = performance.now();
-    const step = () => {
-      const t = Math.min(1, (performance.now() - start - 900) / 1600);
-      glassAmount.current = t <= 0 ? 0 : t * t * (3 - 2 * t); // smoothstep
-      if (t < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [ready]);
 
   // Original: pixel ratio capped at 1.25 on desktop (2 on phones) and no MSAA on this scene, which is
   // what keeps the blueprint lines 1 px and crisp.
@@ -293,13 +291,13 @@ export default function HeroHead({ ready, progressRef }) {
       <RevealMask pointer={pointer} reveal={revealMask} />
       <BackgroundWaves pointer={pointer} reveal={revealMask} />
       <Suspense fallback={null}>
-        <Portrait reveal={reveal} pointer={pointer} progress={progress} mask={revealMask} />
-        <Helmet glassAmount={glassAmount} pointer={pointer} progress={progress} rig={helmetRig} />
-        <HelmetPaint reveal={revealMask} rig={helmetRig} opacity={glassAmount} />
+        <Portrait pointer={pointer} progress={progress} mask={revealMask} />
+        <Helmet pointer={pointer} progress={progress} rig={helmetRig} />
+        <HelmetPaint reveal={revealMask} rig={helmetRig} />
         <Rig progress={progress} pointer={pointer} />
+        <ReadyProbe onReady={onReady} />
       </Suspense>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[3, 5, 4]} intensity={1.4} />
+      {/* no lights: the photo and the lines are unlit shaders, the painted helmet is lit by the HDRI alone */}
     </Canvas>
   );
 }

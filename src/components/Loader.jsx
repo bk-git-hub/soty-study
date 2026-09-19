@@ -1,32 +1,101 @@
 import { useEffect, useRef } from 'react';
+import { Rive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
 import { gsap } from '../lib/gsap';
-import { cdn } from '../lib/assets';
+import { cdn, rive as riveUrl } from '../lib/assets';
 
 /**
- * First-load intro, observed on the original:
- *  1. full lime screen, LN mark centered, "LANDO NORRIS" small at the bottom
- *  2. mark shrinks to a dot (~0.7s)
- *  3. a diagonal lime band wipes off the screen to reveal the hero (~1s)
- * The original runs step 3 as a Rive animation (page-transition.riv); here it's a clip-path tween.
+ * First-load intro, as observed on the original (screencast frames, 2026-09-20):
+ *  1. full lime screen; a small mark in the exact centre erases itself to a dot (~0.35 s, accelerating)
+ *     and redraws stroke by stroke (~0.5 s), again and again, 0.93-0.95 s per cycle, while assets load;
+ *     "LANDO NORRIS" small at the bottom;
+ *  2. exit: a window in the shape of the "4" opens in the centre, grows gently to about 4x in ~0.25 s,
+ *     then explodes past the screen edges in ~0.17 s. The hero behind is already in its final state.
+ * There is no mark shrinking to a dot and no diagonal wipe: that was the day-0 guess.
+ *
+ * Both steps are one Rive file, the same one the original uses for page transitions
+ * (page-transition.riv, artboard and state machine "page-transition"). Found by listing the file's
+ * contents and flipping its inputs on a scratch canvas:
+ *   initial = true before the first frame  -> starts in "page-load-state" (step 1), no cover animation
+ *   transition-in = true                   -> "page-in" (step 2, 0.51 s), then "ready"
+ * The canvas is transparent wherever the file draws nothing, so the "4" really is a hole onto the page.
  */
-export default function Loader({ onDone }) {
-  const ref = useRef(null);
+const FILE = 'page-transition';
+const MIN_SHOWN = 1.2; // s: never flash the loader for less than about one cycle of the mark
+const PAGE_IN = 0.514; // s: length of the file's "page-in" animation
+const SMOOTH_MS = 34;   // a frame counts as smooth below this (two 60 Hz frames)
+const SMOOTH_FRAMES = 3;
+
+export default function Loader({ canExit, onDone }) {
+  const wrap = useRef(null);
+  const canvas = useRef(null);
+  const state = useRef({ rive: null, inputs: null, loading: false, leaving: false, shownAt: performance.now() });
+  const exit = useRef(canExit);
+  exit.current = canExit;
+
   useEffect(() => {
-    const el = ref.current;
-    const mark = el.querySelector('.loader-mark');
-    const tl = gsap.timeline({ onComplete: () => { gsap.set(el, { display: 'none' }); onDone?.(); } });
-    tl.fromTo(mark, { scale: 1, opacity: 1 }, { scale: 0.08, duration: 0.7, ease: 'expo.in', delay: 0.6 })
-      .to(mark, { opacity: 0, duration: 0.15 }, '-=0.05')
-      // diagonal wipe: polygon goes from full cover to a thin band exiting top-right
-      .fromTo(el,
-        { clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' },
-        { clipPath: 'polygon(130% 0, 200% 0, 170% 100%, 100% 100%)', duration: 1.1, ease: 'expo.inOut' }, '-=0.1');
-    return () => tl.kill();
+    const s = state.current, el = wrap.current, cv = canvas.current;
+    let raf = 0, dead = false;
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.round(window.innerWidth * dpr); cv.height = Math.round(window.innerHeight * dpr);
+      s.rive?.resizeDrawingSurfaceToCanvas();
+    };
+    const finish = () => { if (dead) return; dead = true; onDone?.(); };
+    // no file (a build without the original's assets) or a broken one: plain fade instead of hanging
+    const fallback = () => gsap.to(el, { opacity: 0, duration: 0.4, delay: 0.3, onComplete: finish });
+
+    size();
+    const r = new Rive({
+      src: riveUrl(FILE), canvas: cv, artboard: FILE, stateMachines: FILE, autoplay: false,
+      layout: new Layout({ fit: Fit.Cover, alignment: Alignment.Center }),
+      onLoad: () => {
+        s.inputs = Object.fromEntries(r.stateMachineInputs(FILE).map((i) => [i.name, i]));
+        if (!s.inputs.initial || !s.inputs['transition-in']) { fallback(); return; }
+        s.inputs.initial.value = true;
+        r.play(FILE);
+        // Two frames on, the file is painting the lime itself; the CSS lime underneath has to go, or it
+        // would show through the "4". (Not driven by the runtime's StateChange event: in five scratch
+        // experiments it arrived in two and never in the rest, with no rule I could find.)
+        requestAnimationFrame(() => requestAnimationFrame(() => { s.loading = true; el.style.backgroundColor = 'transparent'; }));
+      },
+      onLoadError: fallback,
+    });
+    s.rive = r;
+
+    // leave as soon as the page says it can, the file is in its loading state and the loader has been
+    // up for a moment
+    // Rive advances its animation by the real time since its last frame. If the exit is started inside a
+    // long frame it is over before anyone sees it: the page reports "ready", React re-renders the whole
+    // tree (one 600 ms frame in dev), and a 0.51 s "page-in" started there jumps straight to its end.
+    // Measured from inside the page (scripts/loader-probe.mjs): lime fully opaque, next frame fully gone.
+    // So the exit waits for a few smooth frames *after* the page is ready.
+    let lastTick = performance.now(), smooth = 0;
+    const tick = () => {
+      if (dead) return;
+      const now = performance.now(), dt = now - lastTick; lastTick = now;
+      smooth = exit.current && dt < SMOOTH_MS ? smooth + 1 : 0;
+      if (!s.leaving && s.loading && smooth >= SMOOTH_FRAMES && (now - s.shownAt) / 1000 > MIN_SHOWN) {
+        s.leaving = true;
+        s.inputs['transition-in'].value = true;
+        // on the original the label is still faintly there when the "4" is already half open
+        // (two frames of evidence, so the 0.45 s is an estimate)
+        gsap.to(el.querySelector('.loader-label'), { opacity: 0, duration: 0.45, ease: 'none' });
+        // "page-in" runs 0.514 s by the state machine's own clock (measured once when the event did
+        // arrive). After it the artboard draws nothing, so unmounting a little late is invisible.
+        setTimeout(finish, PAGE_IN * 1000 + 80);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    window.addEventListener('resize', size);
+    return () => { dead = true; cancelAnimationFrame(raf); window.removeEventListener('resize', size); try { r.cleanup(); } catch { /* already gone */ } };
   }, []);
+
+  // lime from the first paint, before the Rive file has arrived
   return (
-    <div ref={ref} className="fixed inset-0 z-[9999] bg-lime flex items-center justify-center text-dark-green">
-      <img src={cdn('ln4-LN-logo-svg.svg')} alt="" className="loader-mark w-[3rem] h-[3rem]" />
-      <img src={cdn('ln4-lando-norris-text-mobile.svg')} alt="" className="absolute bottom-[var(--gap)] h-[1.4rem] w-auto" />
+    <div ref={wrap} className="fixed inset-0 z-[9999] bg-lime text-dark-green">
+      <canvas ref={canvas} className="absolute inset-0 w-full h-full" />
+      <img src={cdn('ln4-lando-norris-text-mobile.svg')} alt="" className="loader-label absolute left-1/2 -translate-x-1/2 bottom-[var(--gap)] h-[1.4rem] w-auto" />
     </div>
   );
 }

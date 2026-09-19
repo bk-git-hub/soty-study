@@ -12,7 +12,7 @@ import Eyebrow from '../../components/Eyebrow';
  * "NEXT RACE" card bottom-left with the circuit outline Rive and the helmet-reef Rive.
  * The hero is sticky for ~2 screens; the WebGL head shrinks towards the marquee section target.
  */
-export default function Hero({ ready }) {
+export default function Hero({ ready, onHeroReady }) {
   const ref = useRef(null);
   const progress = useRef(0);
   useNavTheme(ref, 'dark');
@@ -31,7 +31,7 @@ export default function Hero({ ready }) {
         {/* the contour lines are drawn in WebGL now (src/gl/BackgroundWaves.jsx) */}
         <section className="relative h-full flex items-center justify-center">
           <div className="absolute inset-0 z-10">
-            <HeroHead ready={ready} progressRef={progress} />
+            <HeroHead ready={ready} onReady={onHeroReady} progressRef={progress} />
           </div>
           <h1 className="sr-only">Lando Norris</h1>
           <h2 className="sr-only">2025 McLaren Formula 1 Driver</h2>

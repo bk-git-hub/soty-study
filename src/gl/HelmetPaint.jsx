@@ -142,7 +142,7 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
     const u = quad.current.material.uniforms; // the live material: R3F copies the uniforms prop
     u.tHelmet.value = off.target.texture;
     u.tVelocity.value = reveal.texture;
-    u.uOpacity.value = opacity.current;
+    u.uOpacity.value = opacity ? opacity.current : 1;
   });
 
   // drawn last (after the photo at 0 and the blueprint lines at 1), without depth: it is a 2D paste

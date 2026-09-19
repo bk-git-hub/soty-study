@@ -23,7 +23,17 @@ function ScrollReset() {
 }
 
 export default function App() {
+  // ready: the loader has opened and is gone. heroReady: the page behind it can be shown.
   const [ready, setReady] = useState(false);
+  const [heroReady, setHeroReady] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    // Only the home page has something to wait for (the WebGL hero). Everywhere else, and if the hero
+    // never reports (no WebGL, a missing asset), the loader must still open.
+    if (pathname !== '/') { setHeroReady(true); return; }
+    const id = setTimeout(() => setHeroReady(true), 8000);
+    return () => clearTimeout(id);
+  }, [pathname]);
   useEffect(() => {
     // --vh: real viewport unit that ignores mobile browser chrome (the original does the same)
     const setVh = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
@@ -36,11 +46,11 @@ export default function App() {
     <SmoothScroll>
       <ScrollReset />
       <Nav />
-      {!ready && <Loader onDone={() => setReady(true)} />}
+      {!ready && <Loader canExit={heroReady} onDone={() => setReady(true)} />}
       <div className="page-w relative w-full overflow-clip" data-ready={ready}>
         <main>
           <Routes>
-            <Route path="/" element={<Home ready={ready} />} />
+            <Route path="/" element={<Home ready={ready} onHeroReady={() => setHeroReady(true)} />} />
             <Route path="/on-track" element={<OnTrack />} />
             <Route path="/off-track" element={<OffTrack />} />
             <Route path="/calendar" element={<Calendar />} />

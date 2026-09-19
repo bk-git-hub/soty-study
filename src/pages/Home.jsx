@@ -11,10 +11,10 @@ import SocialsCallout from '../sections/home/SocialsCallout';
 import Footer from '../components/Footer';
 import { HORIZONTAL, IMPACT } from '../data/home';
 
-export default function Home({ ready }) {
+export default function Home({ ready, onHeroReady }) {
   return (
     <>
-      <Hero ready={ready} />
+      <Hero ready={ready} onHeroReady={onHeroReady} />
       <MarqueeSection />
       <div className="bg-dark-green"><Impact parts={IMPACT} /></div>
       <HorizontalTrack items={HORIZONTAL} />
