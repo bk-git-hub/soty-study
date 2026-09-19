@@ -16,7 +16,14 @@ export default function Eyebrow({ children, className = '', color = 'var(--color
     const tl = gsap.timeline({
       paused: true,
       defaults: { ease: 'power3.inOut' },
-      scrollTrigger: { trigger: el, start: 'top 90%', once: true },
+      // Not `once: true`. A once-trigger kills itself the moment it fires, i.e. it removes itself from
+      // ScrollTrigger's list. At phone widths a label is already inside the viewport at load, so it fired
+      // while *another* trigger (the hero's nav theme) was being created and was walking that same list:
+      // ScrollTrigger read the vanished slot ("Cannot read properties of undefined (reading 'end')"),
+      // the error escaped an effect, and React unmounted the whole app. That was the "phone capture
+      // stays dark" of the first four days. `play none none none` plays once just the same (replaying a
+      // finished timeline does nothing) and never mutates the list.
+      scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none none none' },
       delay,
     });
     tl.set(txt, { clipPath: 'inset(0 100% 0 0)' })
