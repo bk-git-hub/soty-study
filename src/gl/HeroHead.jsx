@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import Env from './Env';
+import BackgroundWaves from './BackgroundWaves';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
@@ -78,6 +79,7 @@ const portraitFrag = /* glsl */ `
  */
 const FOLLOW_INTENSITY = 0.075;
 const FOLLOW_DECAY = 2.5;
+const PACE_DECAY = 1.0;
 const CAMERA_NUDGE = 0.02;
 function usePointer() {
   const target = useRef(new THREE.Vector2());
@@ -90,12 +92,19 @@ function usePointer() {
     document.addEventListener('touchmove', onTouch, { passive: true });
     return () => { document.removeEventListener('mousemove', onMouse); document.removeEventListener('touchmove', onTouch); };
   }, []);
+  // pointer speed: distance moved since the previous frame (in normalized units, per frame like the
+  // original), eased with a 1 / s decay (its damp factor 0.01). Drives the bulge in the background waves.
+  const prev = useRef(new THREE.Vector2());
+  const pace = useRef(0);
   const update = (dt) => {
-    const k = 1 - Math.exp(-FOLLOW_DECAY * Math.min(dt, 1 / 30));
+    const d = Math.min(dt, 1 / 30);
+    const k = 1 - Math.exp(-FOLLOW_DECAY * d);
     eased.current.x += (target.current.x - eased.current.x) * k;
     eased.current.y += (target.current.y - eased.current.y) * k;
+    pace.current += (target.current.distanceTo(prev.current) - pace.current) * (1 - Math.exp(-PACE_DECAY * d));
+    prev.current.copy(target.current);
   };
-  return { eased, update };
+  return { eased, pace, update };
 }
 
 function Portrait({ reveal, pointer, progress }) {
@@ -254,6 +263,7 @@ export default function HeroHead({ ready, progressRef }) {
   return (
     <Canvas className="!absolute inset-0" dpr={dpr} camera={{ position: [0, 0, CAM_Z], fov: FOV, near: 0.1, far: 100 }} gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
+      <BackgroundWaves pointer={pointer} />
       <Suspense fallback={null}>
         <Portrait reveal={reveal} pointer={pointer} progress={progress} />
         <Helmet glassAmount={glassAmount} pointer={pointer} progress={progress} />

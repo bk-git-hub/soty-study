@@ -6,7 +6,6 @@ import { cdn } from '../../lib/assets';
 import HeroHead from '../../gl/HeroHead';
 import RiveCanvas from '../../components/RiveCanvas';
 import Eyebrow from '../../components/Eyebrow';
-import Contours from '../shared/Contours';
 
 /**
  * Home hero: white page, topographic contour lines, WebGL portrait + glass helmet,
@@ -27,9 +26,9 @@ export default function Hero({ ready }) {
   }, []);
 
   return (
-    <div ref={ref} className="relative bg-[#f9f9f5] text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
+    <div ref={ref} className="relative bg-[#fcfcfa] text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
       <div className="sticky top-0 h-[calc(var(--vh)*100)] overflow-clip">
-        <Contours className="absolute inset-0 text-[#dcdcd3]" />
+        {/* the contour lines are drawn in WebGL now (src/gl/BackgroundWaves.jsx) */}
         <section className="relative h-full flex items-center justify-center">
           <div className="absolute inset-0 z-10">
             <HeroHead ready={ready} progressRef={progress} />
