@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import SmoothScroll, { getLenis } from './lib/SmoothScroll';
 import { ScrollTrigger } from './lib/gsap';
@@ -27,6 +27,8 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [heroReady, setHeroReady] = useState(false);
   const { pathname } = useLocation();
+  // stable identity: an inline arrow here would defeat the memo on the hero's WebGL canvas
+  const onHeroReady = useCallback(() => setHeroReady(true), []);
   useEffect(() => {
     // Only the home page has something to wait for (the WebGL hero). Everywhere else, and if the hero
     // never reports (no WebGL, a missing asset), the loader must still open.
@@ -50,7 +52,7 @@ export default function App() {
       <div className="page-w relative w-full overflow-clip" data-ready={ready}>
         <main>
           <Routes>
-            <Route path="/" element={<Home ready={ready} onHeroReady={() => setHeroReady(true)} />} />
+            <Route path="/" element={<Home ready={ready} onHeroReady={onHeroReady} />} />
             <Route path="/on-track" element={<OnTrack />} />
             <Route path="/off-track" element={<OffTrack />} />
             <Route path="/calendar" element={<Calendar />} />

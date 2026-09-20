@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { gsap, ScrollTrigger } from '../../lib/gsap';
 import { useNavTheme } from '../../lib/navTheme';
@@ -17,15 +17,16 @@ import Eyebrow from '../../components/Eyebrow';
 export default function Hero({ ready, onHeroReady }) {
   const ref = useRef(null);
   const progress = useRef(0);
-  // the touch lock button lives only while the hero fills the screen (state changes twice per visit,
-  // not per scroll event)
-  const [onHero, setOnHero] = useState(true);
+  // The lock button lives only while the hero fills the screen. It is told so imperatively: a React
+  // state here re-rendered the whole hero at the boundary, and the WebGL canvases with it: one frame
+  // of 467 ms (1440 wide) to 1284 ms (800 wide) exactly where the button faded. A speed bump.
+  const lock = useRef(null);
   useNavTheme(ref, 'dark');
 
   useEffect(() => {
     const st = ScrollTrigger.create({
       trigger: ref.current, start: 'top top', end: '+=100%', scrub: true,
-      onUpdate: (self) => { progress.current = self.progress; setOnHero(self.progress < 0.3); },
+      onUpdate: (self) => { progress.current = self.progress; lock.current?.setOnHero(self.progress < 0.3); },
     });
     return () => st.kill();
   }, []);
@@ -36,7 +37,7 @@ export default function Hero({ ready, onHeroReady }) {
         {/* the contour lines are drawn in WebGL now (src/gl/BackgroundWaves.jsx) */}
         <section className="relative h-full flex items-center justify-center">
           <div className="absolute inset-0 z-10">
-            <HeroHead ready={ready} onReady={onHeroReady} progressRef={progress} />
+            <HeroHead onReady={onHeroReady} progressRef={progress} />
           </div>
           <h1 className="sr-only">Lando Norris</h1>
           <h2 className="sr-only">2025 McLaren Formula 1 Driver</h2>
@@ -70,7 +71,7 @@ export default function Hero({ ready, onHeroReady }) {
           </div>
 
           {/* touch devices: lock scrolling to paint the helmet with a finger */}
-          <HeroTouchLock visible={ready && onHero} />
+          <HeroTouchLock ref={lock} ready={ready} />
 
           {/* mobile title */}
           <div className="hidden max-[991px]:flex absolute inset-x-0 top-[7rem] flex-col items-center gap-3">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { getLenis } from '../lib/SmoothScroll';
 
 /**
@@ -10,11 +10,30 @@ import { getLenis } from '../lib/SmoothScroll';
  *  - "TAP TO LOCK" + a touch icon  ->  tap  ->  "BACK TO SCROLL" + a cross, aria-pressed true;
  *  - while locked the smooth scroller is stopped and the root element clips its overflow;
  *  - it fades with the hero (shown only while the hero is on screen).
+ * Whether the hero is on screen arrives imperatively (ref.setOnHero), never as a prop: a prop meant a
+ * React state in the hero, and flipping it re-rendered the hero and its WebGL canvases mid-scroll
+ * (one frame of 0.5 to 1.3 s at the boundary).
  * The two icons are drawn here from scratch (a touch point with ripples, a cross), not taken from the site.
  */
-export default function HeroTouchLock({ visible }) {
+export default function HeroTouchLock({ ready, ref }) {
   const [touch, setTouch] = useState(false);
   const [locked, setLocked] = useState(false);
+  const wrap = useRef(null);
+  const onHero = useRef(true);
+  // visibility goes straight to the DOM node: no render while scrolling
+  const apply = () => {
+    const el = wrap.current; if (!el) return;
+    const v = ready && onHero.current;
+    el.style.opacity = v ? '1' : '0'; el.style.pointerEvents = v ? 'auto' : 'none';
+  };
+  useImperativeHandle(ref, () => ({
+    setOnHero(v) {
+      if (v === onHero.current) return;
+      onHero.current = v; apply();
+      if (!v) setLocked(false); // releases the lock; a no-op (no render) unless it was locked
+    },
+  }));
+  useEffect(apply); // after every (rare) render: ready flipped, layout became narrow, locked toggled
 
   useEffect(() => {
     // By width, not by touch capability. First version asked the browser "is this a touch device?";
@@ -30,23 +49,22 @@ export default function HeroTouchLock({ visible }) {
   // the lock itself; always released when the control goes away (scrolled past, route change, unmount)
   useEffect(() => {
     const root = document.documentElement;
-    if (locked && visible && touch) {
+    if (locked && touch) {
       getLenis()?.stop();
       root.style.overflow = 'clip';
       root.style.overscrollBehavior = 'none'; // no pull-to-refresh while painting
       root.style.touchAction = 'none';
       return () => { getLenis()?.start(); root.style.overflow = ''; root.style.overscrollBehavior = ''; root.style.touchAction = ''; };
     }
-  }, [locked, visible, touch]);
-  useEffect(() => { if (!visible) setLocked(false); }, [visible]);
+  }, [locked, touch]);
 
   if (!touch) return null;
   return (
     // Sizes in px, as measured on the original at 390 px wide (43 px button, 14 px from the edges).
     // In rem the button came out at 29 px: our fluid rem is 10.7 px on a phone, the original's is larger
     // there. That is a site-wide mobile type-scale difference, not something to fix from inside this control.
-    <div className="fixed right-[14px] bottom-[14px] z-30 flex items-center gap-[11px] transition-opacity duration-300"
-         style={{ opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none' }}>
+    <div ref={wrap} className="fixed right-[14px] bottom-[14px] z-30 flex items-center gap-[11px] transition-opacity duration-300"
+         style={{ opacity: 0, pointerEvents: 'none' }}>
       {/* 8.5 px: "TAP TO LOCK" is 57 px wide on the original; at 13 px ours came out 87 px wide */}
       <span className="text-white font-bold uppercase text-[8.5px] leading-none tracking-[0.01em] select-none" aria-hidden>
         {locked ? 'Back to scroll' : 'Tap to lock'}
