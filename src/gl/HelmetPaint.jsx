@@ -72,8 +72,17 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
     matcap: glAsset('textures/plastic/plastic__matcap-02.webp'),
   });
 
+  // The memo below must hang on the textures themselves, not on `tex`: useTexture returns a new wrapper
+  // object on every render, and with `tex` as a dependency every re-render of this component rebuilt the
+  // materials and the render target and flagged all seven textures for upload again. Measured with
+  // scripts/tex-upload-log.mjs: the 4096 px normal map and friends went to the GPU at 2.8, 3.9, 5.0 s and
+  // again mid-scroll at 18 s (R3F re-measures the canvas while scrolling), 250 to 400 ms each time: a
+  // second "speed bump" near the end of the hero.
+  const { base, normal, metallic, glassBase, glassRoughness, glassNormal, matcap } = tex;
   const off = useMemo(() => {
-    for (const t of Object.values(tex)) {
+    for (const t of [base, normal, metallic, glassBase, glassRoughness, glassNormal, matcap]) {
+      if (t.userData.helmetPaintReady) continue; // configure (and upload) each texture once
+      t.userData.helmetPaintReady = true;
       // glTF UVs have their origin at the top; no mipmaps, like the original (crisper, a little shimmery)
       t.flipY = false; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false;
       // Repeat, not three's default clamp: the texture holds one grille patch and the right chin vent
@@ -82,16 +91,16 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
       t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
       t.needsUpdate = true;
     }
-    tex.base.colorSpace = THREE.SRGBColorSpace;
-    tex.glassBase.colorSpace = THREE.SRGBColorSpace;
+    base.colorSpace = THREE.SRGBColorSpace;
+    glassBase.colorSpace = THREE.SRGBColorSpace;
     // dev only: ?rough=<0..1> overrides the shell roughness (used to study the r174 vs r186 PMREM difference)
     const q = import.meta.env.DEV ? new URLSearchParams(location.search).get('rough') : null;
     const roughness = q !== null && q !== '' && !isNaN(+q) ? +q : SHELL_ROUGHNESS;
-    const shell = new THREE.MeshStandardMaterial({ map: tex.base, normalMap: tex.normal, metalness: 1, roughness, envMapIntensity: livery === 'disco' ? 1.5 : 3 });
+    const shell = new THREE.MeshStandardMaterial({ map: base, normalMap: normal, metalness: 1, roughness, envMapIntensity: livery === 'disco' ? 1.5 : 3 });
     // the visor takes the *helmet's* metallic map in the original; with the default metalness factor of 0
     // it has no effect, the visor shades as a dark dielectric with sharp HDRI reflections
-    const glass = new THREE.MeshStandardMaterial({ map: tex.glassBase, roughnessMap: tex.glassRoughness, normalMap: tex.glassNormal, metalnessMap: tex.metallic, envMapIntensity: 1.5 });
-    const plastic = new THREE.MeshMatcapMaterial({ matcap: tex.matcap, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+    const glass = new THREE.MeshStandardMaterial({ map: glassBase, roughnessMap: glassRoughness, normalMap: glassNormal, metalnessMap: metallic, envMapIntensity: 1.5 });
+    const plastic = new THREE.MeshMatcapMaterial({ matcap, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
     const materials = { helmet: shell, glass, plastic };
 
     const root = new THREE.Group();
@@ -105,7 +114,7 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
     });
     const target = new THREE.WebGLRenderTarget(16, 16, { samples: 2, type: THREE.UnsignedByteType });
     return { scene: new THREE.Scene().add(root), root, target, lit: [shell, glass], materials };
-  }, [glb, tex, livery]);
+  }, [glb, livery, base, normal, metallic, glassBase, glassRoughness, glassNormal, matcap]);
   useEffect(() => () => { off.target.dispose(); Object.values(off.materials).forEach((m) => m.dispose()); }, [off]);
 
   const quad = useRef();
