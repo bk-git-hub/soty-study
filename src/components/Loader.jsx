@@ -29,6 +29,7 @@ const MIN_SHOWN = 1.2; // s: never flash the loader for less than about one cycl
 const PAGE_IN = 0.514; // s: length of the file's "page-in" animation
 const SMOOTH_MS = 34;   // a frame counts as smooth below this (two 60 Hz frames)
 const SMOOTH_FRAMES = 3;
+const GIVE_UP_S = 1.5;  // stop waiting for smooth frames this long after the page is ready
 
 export default function Loader({ canExit, onDone }) {
   const wrap = useRef(null);
@@ -74,12 +75,17 @@ export default function Loader({ canExit, onDone }) {
     // tree (one 600 ms frame in dev), and a 0.51 s "page-in" started there jumps straight to its end.
     // Measured from inside the page (scripts/loader-probe.mjs): lime fully opaque, next frame fully gone.
     // So the exit waits for a few smooth frames *after* the page is ready.
-    let lastTick = performance.now(), smooth = 0;
+    // ...but not forever. On a machine (or a capture) where no frame ever comes in under SMOOTH_MS the
+    // gate never opened and the loader stayed up for good: seen on a 3x capture with a second heavy page
+    // open, 12 s of lime. After GIVE_UP_S of trying, a choppy exit beats no exit.
+    let lastTick = performance.now(), smooth = 0, readySince = null;
     const tick = () => {
       if (dead) return;
       const now = performance.now(), dt = now - lastTick; lastTick = now;
       smooth = exit.current && dt < SMOOTH_MS ? smooth + 1 : 0;
-      if (!s.leaving && s.loading && smooth >= SMOOTH_FRAMES && (now - s.shownAt) / 1000 > MIN_SHOWN) {
+      if (exit.current && readySince === null) readySince = now;
+      const waitedEnough = readySince !== null && (now - readySince) / 1000 > GIVE_UP_S;
+      if (!s.leaving && s.loading && (smooth >= SMOOTH_FRAMES || waitedEnough) && (now - s.shownAt) / 1000 > MIN_SHOWN) {
         s.leaving = true;
         s.inputs['transition-in'].value = true;
         // on the original the label is still faintly there when the "4" is already half open
