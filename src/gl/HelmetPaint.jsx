@@ -45,13 +45,13 @@ const COMPOSITE_FRAG = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
   uniform sampler2D tHelmet, tVelocity;
-  uniform float uOpacity, uShowAll;
+  uniform float uOpacity, uShowAll, uHover;
   ${REVEAL_MASK_GLSL}
   void main() {
     vec4 helmet = texture2D(tHelmet, vUv);
     // ?debug=helmet ignores the mask (the original has the same switch, SHOW_HELMET_PERMANENTLY):
     // the whole helmet at once, for comparing materials without chasing the fluid's phase
-    float mask = max(revealMask(tVelocity, vUv), uShowAll);
+    float mask = max(max(revealMask(tVelocity, vUv), hoverMask(vUv, uHover)), uShowAll);
     // straight-alpha blend over whatever is on the page already = mix(page, helmet.rgb, alpha)
     gl_FragColor = vec4(helmet.rgb, helmet.a * mask * mix(uOpacity, 1.0, uShowAll));
     #include <colorspace_fragment>
@@ -119,7 +119,7 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
 
   const quad = useRef();
   const uniforms = useMemo(() => ({
-    tHelmet: { value: null }, tVelocity: { value: null }, uOpacity: { value: 0 },
+    tHelmet: { value: null }, tVelocity: { value: null }, uOpacity: { value: 0 }, uHover: { value: 0 },
     uShowAll: { value: import.meta.env.DEV && new URLSearchParams(location.search).get('debug') === 'helmet' ? 1 : 0 },
   }), []);
   const clear = useMemo(() => new THREE.Color(), []);
@@ -151,6 +151,7 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
     const u = quad.current.material.uniforms; // the live material: R3F copies the uniforms prop
     u.tHelmet.value = off.target.texture;
     u.tVelocity.value = reveal.texture;
+    u.uHover.value = reveal.hover || 0;
     u.uOpacity.value = opacity ? opacity.current : 1;
   });
 

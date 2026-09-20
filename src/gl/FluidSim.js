@@ -151,6 +151,14 @@ export const REVEAL_MASK_GLSL = /* glsl */ `
   float revealMaskHead(sampler2D tVelocity, vec2 screenUv) {
     return revealMaskAt(tVelocity, vec2(screenUv.x, 0.025 + screenUv.y * 0.95));
   }
+  // The helmet row's hover: the whole mask goes on, as a curtain coming down from the top whose edge
+  // sags in the middle while it moves and is straight at rest (h = 0: nothing, h = 1: everything).
+  // Observed on the original: top to bottom, the strips nearer the head 24-48 px ahead of the outer
+  // ones. The formula is the original's, remembered from reading its composite shader on day 3.
+  float hoverMask(vec2 screenUv, float h) {
+    float edge = screenUv.y + sin(screenUv.x * 3.14159265) * sin(h * 3.14159265) * 0.2;
+    return step(1.0 - edge, h);
+  }
 `;
 
 export class FluidSim {

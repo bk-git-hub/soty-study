@@ -21,6 +21,8 @@ export default function Hero({ ready, onHeroReady }) {
   // state here re-rendered the whole hero at the boundary, and the WebGL canvases with it: one frame
   // of 467 ms (1440 wide) to 1284 ms (800 wide) exactly where the button faded. A speed bump.
   const lock = useRef(null);
+  // pointer on the card's helmet row: the whole reveal mask goes on (a ref, so nothing re-renders)
+  const helmetHover = useRef(false);
   useNavTheme(ref, 'dark');
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function Hero({ ready, onHeroReady }) {
         {/* the contour lines are drawn in WebGL now (src/gl/BackgroundWaves.jsx) */}
         <section className="relative h-full flex items-center justify-center">
           <div className="absolute inset-0 z-10">
-            <HeroHead onReady={onHeroReady} progressRef={progress} />
+            <HeroHead onReady={onHeroReady} progressRef={progress} helmetHover={helmetHover} />
           </div>
           <h1 className="sr-only">Lando Norris</h1>
           <h2 className="sr-only">2025 McLaren Formula 1 Driver</h2>
@@ -64,7 +66,7 @@ export default function Hero({ ready, onHeroReady }) {
               <div className="absolute inset-x-0 bottom-[0.5rem] flex justify-center gap-1"><Eyebrow>Baku</Eyebrow><Eyebrow>gp</Eyebrow></div>
             </Link>
             <div className="mx-[.75rem] h-px bg-current" />
-            <div className="relative h-[6.9rem]">
+            <div className="relative h-[6.9rem]" onPointerEnter={() => { helmetHover.current = true; }} onPointerLeave={() => { helmetHover.current = false; }}>
               <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_play" className="absolute left-1/2 -translate-x-1/2 top-[0.95rem] w-[5.4rem] h-[2.95rem]" />
               <div className="absolute inset-x-[0.6rem] bottom-[0.95rem] flex justify-center"><Eyebrow className="text-center">mclaren f1<br />since 2019</Eyebrow></div>
             </div>

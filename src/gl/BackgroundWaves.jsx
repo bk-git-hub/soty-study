@@ -116,7 +116,7 @@ const SCREEN_FRAG = /* glsl */ `
   varying vec2 vUv;
   uniform sampler2D tNoise, tVelocity;
   uniform vec2 uTexel;
-  uniform float uDebug;
+  uniform float uDebug, uHover;
   uniform vec3 uBackground, uOutline, uCursorBackground, uCursorForeground, uCursorOutline;
   ${REVEAL_MASK_GLSL}
   void main() {
@@ -131,7 +131,7 @@ const SCREEN_FRAG = /* glsl */ `
     // the borders take the lighter grey, so the stroke follows the grain of the waves instead of being
     // a flat blob. Outside the mask only the borders show.
     vec3 painted = mix(mix(uCursorBackground, uCursorForeground, c), uCursorOutline, e);
-    gl_FragColor = vec4(mix(page, painted, revealMask(tVelocity, vUv)), 1.0);
+    gl_FragColor = vec4(mix(page, painted, max(revealMask(tVelocity, vUv), hoverMask(vUv, uHover))), 1.0);
     #include <colorspace_fragment>
     if (uDebug > 1.5) {
       // ?debug=mask: the fluid's velocity as a colour (white = still; x in red, y in green around 0.5)
@@ -167,7 +167,7 @@ export default function BackgroundWaves({ pointer, reveal }) {
   // output, so what reaches the screen is lighter than the hex: page 252,252,250 and lines 231,231,221
   // (measured), not 248,248,243 / 203,203,185. Same here: no sRGB -> linear conversion on the way in.
   const uniforms = useMemo(() => ({
-    tNoise: { value: null }, tVelocity: { value: null }, uTexel: { value: new THREE.Vector2(1, 1) },
+    tNoise: { value: null }, tVelocity: { value: null }, uHover: { value: 0 }, uTexel: { value: new THREE.Vector2(1, 1) },
     uDebug: { value: import.meta.env.DEV ? ({ noise: 1, mask: 2 })[new URLSearchParams(location.search).get('debug')] || 0 : 0 },
     uBackground: { value: new THREE.Color().setStyle(COLOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
     uOutline: { value: new THREE.Color().setStyle(COLOR_OUTLINE, THREE.LinearSRGBColorSpace) },
@@ -190,6 +190,7 @@ export default function BackgroundWaves({ pointer, reveal }) {
     const su = screen.current.material.uniforms;
     su.tNoise.value = fbo.texture;
     su.tVelocity.value = reveal.texture;
+    su.uHover.value = reveal.hover || 0;
     su.uTexel.value.set(1 / size.width, 1 / size.height);
   });
 
