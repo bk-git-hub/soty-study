@@ -6,6 +6,7 @@ import BackgroundWaves from './BackgroundWaves';
 import RevealMask from './RevealMask';
 import HelmetPaint from './HelmetPaint';
 import { REVEAL_MASK_GLSL } from './FluidSim';
+import { SCROLL_FILTER_GLSL, TARGET_REM, CAMERA_DOLLY, ALIVE_UNTIL, ALIVE_FADE, power1InOut, rectAt } from './scrollOut';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
 import { gl as glAsset, model, hdri } from '../lib/assets';
@@ -18,7 +19,7 @@ import { gl as glAsset, model, hdri } from '../lib/assets';
  *    (BlueprintLines), and as the real painted helmet, which only shows where the cursor's fluid
  *    trail has "painted" it on (FluidSim -> RevealMask -> HelmetPaint);
  *  - the flowing contour background, painted by the same trail (BackgroundWaves).
- * Not built yet: the scroll-out choreography, the helmet hover, the real intro.
+ * On scroll the whole scene is drawn into a shrinking viewport (see scrollOut.js and Rig below).
  */
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
@@ -55,10 +56,11 @@ const portraitVert = /* glsl */ `
 `;
 const portraitFrag = /* glsl */ `
   uniform sampler2D uDiffuse; uniform sampler2D uDepth; uniform sampler2D uAlpha;
-  uniform sampler2D uShadow; uniform sampler2D tVelocity; uniform vec2 uBuffer; uniform float uMaskOn; uniform float uHover;
+  uniform sampler2D uShadow; uniform sampler2D tVelocity; uniform vec4 uRect; uniform float uMaskOn; uniform float uHover;
   uniform vec2 uMouse; uniform float uStrength; uniform float uReveal;
   varying vec2 vUv;
   ${REVEAL_MASK_GLSL}
+  ${SCROLL_FILTER_GLSL}
   void main() {
     // depth in [0,1]; centre it so near pixels move one way and far pixels the other
     float d = texture2D(uDepth, vUv).r - 0.5;
@@ -66,13 +68,13 @@ const portraitFrag = /* glsl */ `
     vec4 c = texture2D(uDiffuse, uv);
     // Where the helmet is painted on, the photo switches to a second version of itself with the
     // helmet's shadow baked in (darker neck and collar). Most of it is hidden behind the helmet; what
-    // shows is the shadow on everything the helmet does not cover. gl_FragCoord / buffer size = this
-    // pixel's position on the page, which is where the mask lives.
-    vec2 pageUv = gl_FragCoord.xy / uBuffer;
+    // shows is the shadow on everything the helmet does not cover. The mask lives in the rectangle's own
+    // 0..1 space; gl_FragCoord is in window pixels, so the rectangle's corner comes off first.
+    vec2 pageUv = (gl_FragCoord.xy - uRect.xy) / uRect.zw;
     float painted = max(revealMaskHead(tVelocity, pageUv), hoverMask(pageUv, uHover)) * uMaskOn;
     c = mix(c, texture2D(uShadow, uv), painted);
     float a = texture2D(uAlpha, uv).r;
-    gl_FragColor = vec4(c.rgb, a * uReveal);
+    gl_FragColor = vec4(filterPhoto(c.rgb), a * uReveal);
     // the diffuse map is sRGB and gets decoded to linear on sampling; a ShaderMaterial does not
     // re-encode on its own, and without this the portrait rendered darker and more saturated than the
     // original (forehead 244,170,134 vs 248,212,191 on the reference: exactly one missing gamma)
@@ -123,7 +125,7 @@ function usePointer() {
   return { target, eased, pace, lastMove, update };
 }
 
-function Portrait({ pointer, progress, mask }) {
+function Portrait({ pointer, progress, mask, view }) {
   const [diffuse, depth, alpha, shadow] = useTexture([
     glAsset('textures/head/webp/diffuse.webp'),
     glAsset('textures/head/webp/depth.webp'),
@@ -141,11 +143,12 @@ function Portrait({ pointer, progress, mask }) {
     uDiffuse: { value: diffuse }, uDepth: { value: depth }, uAlpha: { value: alpha },
     uMouse: { value: new THREE.Vector2() }, uStrength: { value: 0.03 }, uReveal: { value: 1 },
     uDisplace: { value: PORTRAIT_DISPLACE },
-    uShadow: { value: shadow }, tVelocity: { value: null }, uBuffer: { value: new THREE.Vector2(1, 1) }, uMaskOn: { value: 0 }, uHover: { value: 0 },
+    uShadow: { value: shadow }, tVelocity: { value: null }, uRect: { value: new THREE.Vector4(0, 0, 1, 1) }, uMaskOn: { value: 0 }, uHover: { value: 0 }, uFilter: { value: 0 },
   }), [diffuse, depth, alpha, shadow]);
   const mat = useRef();
   const mesh = useRef();
   const { size, gl } = useThree();
+  const buffer = useMemo(() => new THREE.Vector2(), []);
   // dev-only: ?disp=<units> and ?seg=<n> override the relief depth and the plane's segment count
   const dbg = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
   const dnum = (k, dflt) => { const v = dbg && dbg.get(k); return v === null || v === '' || isNaN(+v) ? dflt : +v; };
@@ -155,9 +158,13 @@ function Portrait({ pointer, progress, mask }) {
     const u = mat.current.uniforms;
     // the reveal mask, in page space (see the fragment shader)
     u.tVelocity.value = mask.texture;
-    u.uMaskOn.value = mask.texture ? 1 : 0;
+    u.uMaskOn.value = mask.texture ? view.alive : 0;
     u.uHover.value = mask.hover || 0;
-    gl.getDrawingBufferSize(u.uBuffer.value);
+    u.uFilter.value = view.e;
+    // the rectangle in buffer pixels, origin bottom-left like gl_FragCoord
+    gl.getDrawingBufferSize(buffer);
+    const k = buffer.x / size.width;
+    u.uRect.value.set(view.x * k, (size.height - view.y - view.h) * k, view.w * k, view.h * k);
     const m = pointer.eased.current, follow = mask.follow;
     mesh.current.rotation.y = m.x * FOLLOW_INTENSITY * follow;
     mesh.current.rotation.x = size.width > 768 ? -m.y * FOLLOW_INTENSITY * follow * (1 - progress.current) : 0;
@@ -174,7 +181,7 @@ function Portrait({ pointer, progress, mask }) {
   );
 }
 
-function Helmet({ pointer, progress, rig, mask }) {
+function Helmet({ pointer, progress, rig, mask, view }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
   const group = useRef();
   const { size } = useThree();
@@ -208,7 +215,7 @@ function Helmet({ pointer, progress, rig, mask }) {
   useFrame((state, dt) => {
     if (debugWire) { for (const m of meshes) { m.visible = true; m.material = wireMats[m.name] || wireMats.helmet; } return; }
     lineMat.uniforms.uTime.value = state.clock.elapsedTime;
-    lineMat.uniforms.uOpacity.value = 0.1;
+    lineMat.uniforms.uOpacity.value = 0.1 * view.wire;
     lineMat.uniforms.uFloor.value = debugLines ? 1 : 0;
     // pointer-follow: the head's rotation at 1/1.5, on top of the fixed pitch (see usePointer)
     const m = pointer.eased.current;
@@ -244,12 +251,13 @@ function Helmet({ pointer, progress, rig, mask }) {
 // same lengths), so the helmet faces straight ahead; it comes back on the way out. Both values restart
 // from wherever they are when the pointer changes its mind (GSAP's overwrite), not along the old curve.
 const HOVER_IN = 1.5, HOVER_OUT = 1.0;
-const power1InOut = (u) => (u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u));
 const expoInOut = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? Math.pow(2, 20 * u - 10) / 2 : 1 - Math.pow(2, -20 * u + 10) / 2);
 
-function Rig({ progress, pointer, helmetHover, mask }) {
-  const { camera, size } = useThree();
+function Rig({ progress, pointer, helmetHover, mask, view }) {
+  const { camera, size, gl } = useThree();
   const tween = useRef({ goal: 0, t: 0, fromHover: 0, fromFollow: 1 });
+  // the landing box is sized in rem; read the root font size when the canvas is measured, not per frame
+  const rem = useMemo(() => parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, [size.width, size.height]);
   useFrame((_, dt) => {
     pointer.update(dt);
     const tw = tween.current, want = helmetHover?.current ? 1 : 0;
@@ -261,11 +269,27 @@ function Rig({ progress, pointer, helmetHover, mask }) {
     const m = pointer.eased.current, p = progress.current;
     // pointer-follow: the camera is nudged with the eased cursor (see usePointer)
     camera.position.x = m.x * CAMERA_NUDGE * mask.follow;
-    // scroll-out: the whole hero drifts up and away as the page scrolls into the marquee section
-    // (baseline guess, kept proportional to the 0.79-unit world height; the original moves its camera
-    // group by +0.1 and scrolls the composited plane with the page: to be matched later)
-    camera.position.y = (size.width > 768 ? -m.y * CAMERA_NUDGE * mask.follow * (1 - p) : 0) - p * 1.2;
-    camera.position.z = camZ(size.width) + p * 0.9;
+    camera.position.y = size.width > 768 ? -m.y * CAMERA_NUDGE * mask.follow * (1 - p) : 0;
+
+    // Scroll-out (scrollOut.js): the scene is drawn into a viewport that shrinks from the whole screen
+    // to the landing box. With the camera's aspect set to the rectangle's, the picture scales with the
+    // rectangle's height and shows more to the sides when the rectangle gets relatively wider: what
+    // the original does on a narrow screen. (The day-0 guess moved the camera up and back instead.)
+    view.vw = size.width; view.vh = size.height; view.p = p; view.e = power1InOut(Math.min(1, Math.max(0, p)));
+    rectAt(view.e, size.width, size.height, TARGET_REM[0] * rem, TARGET_REM[1] * rem, view);
+    // ...while the camera moves in, so the face ends up larger in the box than a pure shrink would leave it
+    camera.position.z = camZ(size.width) - CAMERA_DOLLY * view.e;
+    // alive below the breakpoint; crossing it starts a short fade (not tied to the scroll position)
+    const aliveGoal = p < ALIVE_UNTIL ? 1 : 0, step = Math.min(dt, 0.1) / ALIVE_FADE;
+    view.alive = aliveGoal > view.alive ? Math.min(1, view.alive + step) : Math.max(0, view.alive - step);
+    view.wire = Math.min(1, Math.max(0, 1 - p / ALIVE_UNTIL));
+    // Outside the rectangle the canvas must stay transparent. three's automatic clear obeys the scissor,
+    // so without a full clear first the area the rectangle has just left keeps its old pixels.
+    gl.setScissorTest(false); gl.setViewport(0, 0, size.width, size.height); gl.clear();
+    const vy = size.height - view.y - view.h; // three's viewport origin is bottom-left
+    gl.setViewport(view.x, vy, view.w, view.h); gl.setScissor(view.x, vy, view.w, view.h); gl.setScissorTest(true);
+    const aspect = view.w / view.h;
+    if (Math.abs(camera.aspect - aspect) > 1e-6) { camera.aspect = aspect; camera.updateProjectionMatrix(); }
   });
   return null;
 }
@@ -312,18 +336,26 @@ function HeroHead({ onReady, progressRef, helmetHover }) {
   const pointer = usePointer();
   // shared by everything the cursor "paints": { texture } = the fluid's velocity field (see RevealMask)
   const revealMask = useMemo(() => ({ texture: null, hover: 0, follow: 1 }), []);
+  // the shrinking rectangle (CSS px, top-left origin) and the scroll-out's other values; written by Rig
+  // every frame, read by everything that draws. toLocal: a pointer position in screen clip space
+  // (-1..1) expressed in the rectangle's clip space, so the paint stays under the pointer.
+  const view = useMemo(() => {
+    const v = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight, vw: window.innerWidth, vh: window.innerHeight, p: 0, e: 0, alive: 1, wire: 1 };
+    v.toLocal = (c, out) => out.set((((c.x + 1) / 2 * v.vw - v.x) / v.w) * 2 - 1, 1 - (((1 - c.y) / 2 * v.vh - v.y) / v.h) * 2);
+    return v;
+  }, []);
   const helmetRig = useRef();
   return (
     <Canvas className="!absolute inset-0" dpr={dpr} camera={CAMERA_CONFIG} gl={GL_CONFIG}>
       <Env url={hdri('studio_small_08_1k--light')} intensity={1.2} />
       {/* mounted before the waves so its frame callback (the simulation step) runs before they draw */}
-      <RevealMask pointer={pointer} reveal={revealMask} />
-      <BackgroundWaves pointer={pointer} reveal={revealMask} />
+      <RevealMask pointer={pointer} reveal={revealMask} view={view} />
+      <BackgroundWaves pointer={pointer} reveal={revealMask} view={view} />
       <Suspense fallback={null}>
-        <Portrait pointer={pointer} progress={progress} mask={revealMask} />
-        <Helmet pointer={pointer} progress={progress} rig={helmetRig} mask={revealMask} />
-        <HelmetPaint reveal={revealMask} rig={helmetRig} />
-        <Rig progress={progress} pointer={pointer} helmetHover={helmetHover} mask={revealMask} />
+        <Portrait pointer={pointer} progress={progress} mask={revealMask} view={view} />
+        <Helmet pointer={pointer} progress={progress} rig={helmetRig} mask={revealMask} view={view} />
+        <HelmetPaint reveal={revealMask} rig={helmetRig} view={view} />
+        <Rig progress={progress} pointer={pointer} helmetHover={helmetHover} mask={revealMask} view={view} />
         <ReadyProbe onReady={onReady} />
       </Suspense>
       {/* no lights: the photo and the lines are unlit shaders, the painted helmet is lit by the HDRI alone */}

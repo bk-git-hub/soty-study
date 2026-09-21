@@ -31,7 +31,7 @@ export function idleCursorAt(t, out) {
 }
 
 // `reveal` is a plain ref-like object shared with the shaders' owners: { texture } is the velocity field.
-export default function RevealMask({ pointer, reveal }) {
+export default function RevealMask({ pointer, reveal, view }) {
   const { gl, size } = useThree();
   const sim = useMemo(() => new FluidSim(), []);
   useEffect(() => () => sim.dispose(), [sim]);
@@ -42,12 +42,16 @@ export default function RevealMask({ pointer, reveal }) {
     const s = state.current, now = performance.now() / 1000;
     const lastMove = pointer.lastMove.current;
     const moving = lastMove === null ? now - s.mounted < FIRST_IDLE_AFTER : now - lastMove < IDLE_AFTER;
-    if (moving) { s.idleSince = null; s.cursor.copy(pointer.target.current); }
+    // the mask lives in the hero's rectangle, which shrinks on scroll: the real pointer is converted into
+    // that space so the paint stays under it (the automatic cursor already draws inside the rectangle)
+    if (moving) { s.idleSince = null; if (view) view.toLocal(pointer.target.current, s.cursor); else s.cursor.copy(pointer.target.current); }
     else {
       if (s.idleSince === null) s.idleSince = now; // the S always starts from its top-left end
       idleCursorAt(now - s.idleSince, s.cursor);
     }
     s.pending += dt;
+    // past the scroll-out's breakpoint nothing reads the mask: the simulation rests
+    if (view && view.alive <= 0) { s.pending = 0; reveal.texture = sim.texture; return; }
     if (s.pending > STEP) { sim.step(gl, s.cursor); s.pending %= STEP; }
     reveal.texture = sim.texture;
   });

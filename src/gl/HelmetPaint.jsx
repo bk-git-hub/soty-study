@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { gl as glAsset, model } from '../lib/assets';
+import { SCROLL_FILTER_GLSL } from './scrollOut';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 
 /*
@@ -47,18 +48,19 @@ const COMPOSITE_FRAG = /* glsl */ `
   uniform sampler2D tHelmet, tVelocity;
   uniform float uOpacity, uShowAll, uHover;
   ${REVEAL_MASK_GLSL}
+  ${SCROLL_FILTER_GLSL}
   void main() {
     vec4 helmet = texture2D(tHelmet, vUv);
     // ?debug=helmet ignores the mask (the original has the same switch, SHOW_HELMET_PERMANENTLY):
     // the whole helmet at once, for comparing materials without chasing the fluid's phase
     float mask = max(max(revealMask(tVelocity, vUv), hoverMask(vUv, uHover)), uShowAll);
     // straight-alpha blend over whatever is on the page already = mix(page, helmet.rgb, alpha)
-    gl_FragColor = vec4(helmet.rgb, helmet.a * mask * mix(uOpacity, 1.0, uShowAll));
+    gl_FragColor = vec4(filterPhoto(helmet.rgb), helmet.a * mask * mix(uOpacity, 1.0, uShowAll));
     #include <colorspace_fragment>
   }
 `;
 
-export default function HelmetPaint({ reveal, rig, opacity }) {
+export default function HelmetPaint({ reveal, rig, view }) {
   const { gl, scene: pageScene, camera, size } = useThree();
   const livery = useMemo(pickLivery, []);
   const { scene: glb } = useGLTF(model('helmet-21'), DRACO);
@@ -119,7 +121,7 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
 
   const quad = useRef();
   const uniforms = useMemo(() => ({
-    tHelmet: { value: null }, tVelocity: { value: null }, uOpacity: { value: 0 }, uHover: { value: 0 },
+    tHelmet: { value: null }, tVelocity: { value: null }, uOpacity: { value: 0 }, uHover: { value: 0 }, uFilter: { value: 0 },
     uShowAll: { value: import.meta.env.DEV && new URLSearchParams(location.search).get('debug') === 'helmet' ? 1 : 0 },
   }), []);
   const clear = useMemo(() => new THREE.Color(), []);
@@ -128,6 +130,10 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
   useFrame(() => {
     const source = rig.current;
     if (!source || !reveal.texture) return;
+    // past the scroll-out's breakpoint nothing of the helmet shows: skip its render altogether
+    const alive = view ? view.alive : 1;
+    if (quad.current) quad.current.visible = alive > 0;
+    if (alive <= 0) return;
     // the studio HDRI arrives late (Env loads it without blocking). A per-material envMap is needed
     // because scene.environment ignores envMapIntensity in current three.
     const env = pageScene.environment;
@@ -152,7 +158,8 @@ export default function HelmetPaint({ reveal, rig, opacity }) {
     u.tHelmet.value = off.target.texture;
     u.tVelocity.value = reveal.texture;
     u.uHover.value = reveal.hover || 0;
-    u.uOpacity.value = opacity ? opacity.current : 1;
+    u.uOpacity.value = alive;
+    u.uFilter.value = view ? view.e : 0;
   });
 
   // drawn last (after the photo at 0 and the blueprint lines at 1), without depth: it is a 2D paste

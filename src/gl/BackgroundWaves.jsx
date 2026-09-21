@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { REVEAL_MASK_GLSL } from './FluidSim';
+import { SCROLL_FILTER_GLSL } from './scrollOut';
 
 /*
  * The hero background: slowly flowing contour lines ("white waves").
@@ -20,6 +21,11 @@ import { REVEAL_MASK_GLSL } from './FluidSim';
  *  on the page colour. (The band fill is used later by the cursor paint; see the reveal work.)
  *
  * R = band (0/1), G = the wrapped noise value, kept for the paint / hover steps that read it.
+ *
+ * The same component also draws the dark layer behind the hero (palette="dark", its own small canvas):
+ * on scroll the light page shrinks to a rectangle and the dark page around it carries the same flowing
+ * lines. On the original the lines inside the rectangle are a scaled-down copy of the ones outside
+ * (they do not join at the rectangle's edge), so both canvases run the noise on one shared clock.
  */
 
 // params of the original's head scene
@@ -29,6 +35,11 @@ const COLOR_OUTLINE = '#CBCBB9';
 const COLOR_CURSOR_BACKGROUND = '#E8E8DF';
 const COLOR_CURSOR_FOREGROUND = '#CFD2C5';
 const COLOR_CURSOR_OUTLINE = '#E8E8DF';
+// the dark page around the shrinking rectangle, as measured on screen (page 40,44,32, lines 54,59,37)
+const DARK_BACKGROUND = [40, 44, 32], DARK_OUTLINE = [54, 59, 37];
+// one clock for every instance, so the dark layer and the hero show the same field at the same moment
+const T0 = performance.now();
+const wavesTime = () => (performance.now() - T0) / 1000;
 const SCALE = 1, SPEED = 0.1, DISTORT_SCALE = 1, DISTORT_INTENSITY = 0.5, NOISE_DETAIL = 3;
 const CURSOR_INTENSITY = 0.15, CURSOR_SCALE = 3, CURSOR_BOUNCE = -0.75;
 
@@ -116,9 +127,10 @@ const SCREEN_FRAG = /* glsl */ `
   varying vec2 vUv;
   uniform sampler2D tNoise, tVelocity;
   uniform vec2 uTexel;
-  uniform float uDebug, uHover;
+  uniform float uDebug, uHover, uAlive;
   uniform vec3 uBackground, uOutline, uCursorBackground, uCursorForeground, uCursorOutline;
   ${REVEAL_MASK_GLSL}
+  ${SCROLL_FILTER_GLSL}
   void main() {
     float c = texture2D(tNoise, vUv).r;
     float e = 0.0;
@@ -131,7 +143,9 @@ const SCREEN_FRAG = /* glsl */ `
     // the borders take the lighter grey, so the stroke follows the grain of the waves instead of being
     // a flat blob. Outside the mask only the borders show.
     vec3 painted = mix(mix(uCursorBackground, uCursorForeground, c), uCursorOutline, e);
-    gl_FragColor = vec4(mix(page, painted, max(revealMask(tVelocity, vUv), hoverMask(vUv, uHover))), 1.0);
+    // uAlive: the paint (and the helmet-row hover) exists only above the scroll-out's breakpoint
+    float mask = max(revealMask(tVelocity, vUv), hoverMask(vUv, uHover)) * uAlive;
+    gl_FragColor = vec4(filterPage(mix(page, painted, mask)), 1.0);
     #include <colorspace_fragment>
     if (uDebug > 1.5) {
       // ?debug=mask: the fluid's velocity as a colour (white = still; x in red, y in green around 0.5)
@@ -144,7 +158,7 @@ const SCREEN_FRAG = /* glsl */ `
   }
 `;
 
-export default function BackgroundWaves({ pointer, reveal }) {
+export default function BackgroundWaves({ pointer, reveal, view, palette = 'light', active }) {
   const { size, gl } = useThree();
   // The noise lives at CSS-pixel resolution like the original's (not multiplied by the pixel ratio).
   // A plain 8-bit target is enough: it stores a 0/1 band and a 0..1 ramp.
@@ -167,21 +181,27 @@ export default function BackgroundWaves({ pointer, reveal }) {
   // output, so what reaches the screen is lighter than the hex: page 252,252,250 and lines 231,231,221
   // (measured), not 248,248,243 / 203,203,185. Same here: no sRGB -> linear conversion on the way in.
   const uniforms = useMemo(() => ({
-    tNoise: { value: null }, tVelocity: { value: null }, uHover: { value: 0 }, uTexel: { value: new THREE.Vector2(1, 1) },
+    tNoise: { value: null }, tVelocity: { value: null }, uHover: { value: 0 }, uAlive: { value: 1 }, uFilter: { value: 0 }, uTexel: { value: new THREE.Vector2(1, 1) },
     uDebug: { value: import.meta.env.DEV ? ({ noise: 1, mask: 2 })[new URLSearchParams(location.search).get('debug')] || 0 : 0 },
-    uBackground: { value: new THREE.Color().setStyle(COLOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
-    uOutline: { value: new THREE.Color().setStyle(COLOR_OUTLINE, THREE.LinearSRGBColorSpace) },
+    // (the dark pair was measured on screen, so it goes in as real sRGB and comes out as measured)
+    uBackground: { value: palette === 'dark' ? new THREE.Color().setRGB(...DARK_BACKGROUND.map((v) => v / 255), THREE.SRGBColorSpace) : new THREE.Color().setStyle(COLOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
+    uOutline: { value: palette === 'dark' ? new THREE.Color().setRGB(...DARK_OUTLINE.map((v) => v / 255), THREE.SRGBColorSpace) : new THREE.Color().setStyle(COLOR_OUTLINE, THREE.LinearSRGBColorSpace) },
     uCursorBackground: { value: new THREE.Color().setStyle(COLOR_CURSOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
     uCursorForeground: { value: new THREE.Color().setStyle(COLOR_CURSOR_FOREGROUND, THREE.LinearSRGBColorSpace) },
     uCursorOutline: { value: new THREE.Color().setStyle(COLOR_CURSOR_OUTLINE, THREE.LinearSRGBColorSpace) },
-  }), []);
+  }), [palette]);
+  const local = useMemo(() => new THREE.Vector2(), []);
 
-  useFrame((state) => {
+  useFrame(() => {
+    // the dark layer is hidden behind the hero until the page scrolls: nothing to draw
+    if (active && !active()) { if (screen.current) screen.current.visible = false; return; }
+    if (screen.current) screen.current.visible = true;
     const u = off.material.uniforms;
-    u.uAspect.value = size.width / size.height;
-    u.uTime.value = state.clock.elapsedTime;
-    u.uMouse.value.copy(pointer.eased.current);
-    u.uPace.value = pointer.pace.current * 4;
+    // inside the shrinking rectangle the field keeps the rectangle's proportions, and the pointer is
+    // taken in the rectangle's own space (the quad below fills the viewport = the rectangle)
+    u.uAspect.value = view ? view.w / view.h : size.width / size.height;
+    u.uTime.value = wavesTime();
+    if (pointer) { if (view) view.toLocal(pointer.eased.current, local); else local.copy(pointer.eased.current); u.uMouse.value.copy(local); u.uPace.value = pointer.pace.current * 4; }
     gl.setRenderTarget(fbo);
     gl.render(off.scene, off.camera);
     gl.setRenderTarget(null);
@@ -189,8 +209,10 @@ export default function BackgroundWaves({ pointer, reveal }) {
     // writing to ours after mount never reaches the shader (the texture stayed null = black for an hour).
     const su = screen.current.material.uniforms;
     su.tNoise.value = fbo.texture;
-    su.tVelocity.value = reveal.texture;
-    su.uHover.value = reveal.hover || 0;
+    su.tVelocity.value = reveal ? reveal.texture : null;
+    su.uHover.value = reveal ? reveal.hover || 0 : 0;
+    su.uAlive.value = reveal ? (view ? view.alive : 1) : 0;
+    su.uFilter.value = view ? view.e : 0;
     su.uTexel.value.set(1 / size.width, 1 / size.height);
   });
 
