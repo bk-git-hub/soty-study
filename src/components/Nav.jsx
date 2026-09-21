@@ -14,6 +14,14 @@ export default function Nav() {
   const { pathname } = useLocation();
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => { document.documentElement.classList.toggle('menu-open', open); }, [open]);
+  // The centre mark is there only at the very top of a page: on the original it is on the hero at 0 px and
+  // gone in every still from 120 px on. A class on <html>, no state: nothing re-renders while scrolling.
+  // (The 40 px threshold is an estimate.)
+  useEffect(() => {
+    const onScroll = () => document.documentElement.classList.toggle('nav-scrolled', window.scrollY > 40);
+    onScroll(); window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [pathname]);
 
   return (
     <>

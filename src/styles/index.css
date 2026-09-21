@@ -78,7 +78,10 @@ html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
 .lenis.lenis-stopped { overflow: hidden; }
 img { display: block; max-width: 100%; }
-a { color: inherit; text-decoration: none; }
+/* No `color: inherit` here: Tailwind's base layer already has it, and a rule outside every layer beats the
+   utilities layer whatever its specificity. With it, `text-dark-green` on the nav's STORE link lost and
+   the label was white on lime from day 0 (found 2026-09-21, side by side with the original). */
+a { text-decoration: none; }
 canvas { display: block; }
 
 /* Layout helpers */
@@ -166,6 +169,8 @@ html[data-nav-theme="light"] .nav-brand-text { color: var(--color-white); }
 .nav-brand-text { transition: color .5s var(--ease-site); }
 html[data-nav-theme="light"] .nav-brand-img, html[data-nav-theme="light"] .nav-mark-img { filter: brightness(0) invert(1); }
 html[data-nav-theme="light"] .nav-ham { background: var(--color-white); }
+.nav-mark { transition: opacity .4s var(--ease-site); }
+html.nav-scrolled .nav-mark { opacity: 0; pointer-events: none; }
 .nav-brand-img, .nav-mark-img, .nav-ham { transition: filter .5s var(--ease-site), background .5s var(--ease-site); }
 
 /* Helmet card reveal (hover image wipes in from the top with an ellipse) */
