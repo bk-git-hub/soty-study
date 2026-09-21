@@ -5,7 +5,7 @@ import { cdn } from '../../lib/assets';
 import HeroHead from '../../gl/HeroHead';
 import DarkWaves from '../../gl/DarkWaves';
 import TrackMini from '../../gl/TrackMini';
-import { SIGN_FROM, SIGN_TO, SIGN_REM, TARGET_REM, power1InOut } from '../../gl/scrollOut';
+import { SIGN_FROM, SIGN_TO, TARGET_REM, power1InOut } from '../../gl/scrollOut';
 import HeroTouchLock from '../../components/HeroTouchLock';
 import ScrollSignature from '../../components/ScrollSignature';
 import Marquee from '../../components/Marquee';
@@ -27,7 +27,10 @@ import Eyebrow from '../../components/Eyebrow';
  * Everything scroll-driven goes through refs and handles: a React state here re-rendered the canvases
  * at the boundary and cost one frame of 0.5 to 1.3 s (2026-09-20).
  */
-const MARQUEE_REM_PER_S = 6.4; // 85 px/s at 1 rem = 13.33 px
+// 85 px/s at 900 px of viewport height. The lines scale with the height (see index.css), so the speed is
+// taken in the same unit; on narrow screens, where the letters are 0.56x the size, so is the speed (the
+// narrow-screen speed itself was not measured).
+const MARQUEE_VH_PER_S = 9.44, NARROW_TEXT_SCALE = 0.56;
 const CARD_GONE_AT = 0.1;      // estimate: the card is there at 0 px and gone by 120 px of 900
 // The section label fades in with the scroll (stills taken at rest show in-between values, so it is not a
 // timed tween): brightness of its lime mark on the original at 706 / 732 / 754 / 779 / 806 / 855 px of 900
@@ -47,7 +50,7 @@ export default function Hero({ ready, onHeroReady }) {
   const card = useRef(null), title = useRef(null), label = useRef(null);
   // pointer on the card's helmet row: the whole reveal mask goes on (a ref, so nothing re-renders)
   const helmetHover = useRef(false);
-  const marqueeSpeed = useMemo(() => MARQUEE_REM_PER_S * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 13.33), []);
+  const marqueeSpeed = useMemo(() => (MARQUEE_VH_PER_S * window.innerHeight / 100) * (window.innerWidth <= 767 ? NARROW_TEXT_SCALE : 1), []);
 
   useEffect(() => {
     const last = { card: -1, label: -1, theme: '' };
@@ -91,12 +94,12 @@ export default function Hero({ ready, onHeroReady }) {
           <div className="absolute inset-0"><DarkWaves progressRef={progress} /></div>
 
           {/* 1: the two lines, behind the rectangle */}
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col gap-[0.35rem] select-none pointer-events-none" aria-hidden>
-            <Marquee speed={marqueeSpeed} direction="left" gap="2.2rem">
-              <span className="t-impact-lg-serif whitespace-nowrap text-lime-off">WE DID IT AT HOME</span>
+          <div className="absolute inset-0 select-none pointer-events-none" aria-hidden>
+            <Marquee className="hero-line hero-line-serif" speed={marqueeSpeed} direction="left">
+              <span className="t-impact-lg-serif whitespace-nowrap text-lime-off pr-[0.27em]">WE DID IT AT HOME</span>
             </Marquee>
-            <Marquee speed={marqueeSpeed} direction="right" gap="2.2rem">
-              <span className="t-impact-lg whitespace-nowrap text-[#dde1d2]">A British GP weekend I will remember forever</span>
+            <Marquee className="hero-line hero-line-sans" speed={marqueeSpeed} direction="right">
+              <span className="t-impact-lg whitespace-nowrap text-[#dde1d2] pr-[0.27em]">A British GP weekend I will remember forever</span>
             </Marquee>
           </div>
 
@@ -108,7 +111,7 @@ export default function Hero({ ready, onHeroReady }) {
           <h2 className="sr-only">2025 McLaren Formula 1 Driver</h2>
 
           {/* 3: signature and section label */}
-          <ScrollSignature ref={sign} className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 max-w-none pointer-events-none" style={{ width: `${SIGN_REM[0]}rem`, height: `${SIGN_REM[1]}rem` }} />
+          <ScrollSignature ref={sign} className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 max-w-none pointer-events-none hero-sign" />
           <div ref={label} className="absolute inset-x-0 z-20 flex flex-col items-center gap-[var(--gap)] text-center text-white opacity-0 pointer-events-none"
                style={{ bottom: `calc(50% + ${TARGET_REM[1] / 2}rem + ${LABEL_GAP_REM}rem)` }}>
             <img src={cdn('ln4-LN-logo-svg.svg')} alt="" className="w-[2.4rem] h-[2.4rem]" />

@@ -30,8 +30,8 @@
  *    original's stills and our file at known input values (scripts/rive-ink-box.mjs): input = 1.57 *
  *    (scrollY - 450) at 900 px of viewport height, within 5 % at six events. A first reading from pixel
  *    counts ("done at 0.95") was wrong: the count rests for a while there, then grows again.
- *    It has a fixed size (artboard 1030 x 680 at 0.777 px per unit at 1440 wide = 60 x 39.6 rem) and sits
- *    in the middle of the screen; it does not scale with the rectangle.
+ *    It sits in the middle of the screen and does not scale with the rectangle. Its size is set in
+ *    index.css (.hero-sign): min(64.75vw, 800px), not rem as first fitted at a single width.
  */
 
 export const TARGET_REM = [35.375, 22.875];
@@ -39,7 +39,6 @@ export const CAMERA_DOLLY = 1.0; // world units towards the head, times e
 export const ALIVE_UNTIL = 0.445;
 export const ALIVE_FADE = 0.5; // s, estimate
 export const SIGN_FROM = 0.5, SIGN_TO = 1.21;
-export const SIGN_REM = [60, 39.6];
 
 export const power1InOut = (u) => (u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u));
 

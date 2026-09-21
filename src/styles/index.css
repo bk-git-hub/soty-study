@@ -163,6 +163,28 @@ a:hover .text-hover > span + span, .text-hover:hover > span + span { transform: 
 /* Screen-reader only */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* Hero scroll-out: the two drifting lines and the signature (sizes measured on the original at nine viewport
+   sizes, scripts/sign-text-size.mjs).
+   The lines scale with the viewport *height*, at every width: ink 79 px at 900 high, 63 px at 700 high, the
+   same from 900 to 1440 wide (the original draws them inside its WebGL scene, whose vertical field of view
+   is fixed). A rem size matched at 1440x900 only, by luck. Up to 767 px wide they are smaller and sit near
+   the bottom (ink tops at 79.1 % and 85.4 % of the height, at both 900 and 700 high).
+   The signature is min(64.75vw, 800px) wide, 50vw up to 991 px, whatever the height: 450 / 647 / 777 / 800 /
+   800 px at 900 / 1000 / 1200 / 1300 / 1440 wide. (First version: 60 rem, fitted at one width.) */
+.hero-line { position: absolute; left: 0; right: 0; }
+.hero-line .t-impact-lg-serif { font-size: calc(var(--vh) * 12.54); letter-spacing: -.0227em; }
+.hero-line .t-impact-lg { font-size: calc(var(--vh) * 11.76); letter-spacing: -.0079em; }
+.hero-line-serif { top: calc(var(--vh) * 38.2); }
+.hero-line-sans { top: calc(var(--vh) * 49.68); }
+.hero-sign { width: min(64.75vw, 800px); aspect-ratio: 1030 / 680; }
+@media (max-width: 991px) { .hero-sign { width: 50vw; } }
+@media (max-width: 767px) {
+  .hero-line .t-impact-lg-serif { font-size: calc(var(--vh) * 7.15); }
+  .hero-line .t-impact-lg { font-size: calc(var(--vh) * 6.55); }
+  .hero-line-serif { top: calc(var(--vh) * 78.34); }
+  .hero-line-sans { top: calc(var(--vh) * 84.83); }
+}
+
 /* Nav theme: sections set data-nav-theme on <html>; "dark" = dark text over light sections. */
 html[data-nav-theme="dark"] .nav-brand-img, html[data-nav-theme="dark"] .nav-mark-img { filter: none; }
 html[data-nav-theme="light"] .nav-brand-text { color: var(--color-white); }
