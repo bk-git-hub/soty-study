@@ -1,5 +1,4 @@
 import Hero from '../sections/home/Hero';
-import MarqueeSection from '../sections/home/MarqueeSection';
 import Impact from '../sections/home/Impact';
 import HorizontalTrack from '../sections/home/HorizontalTrack';
 import Otot from '../sections/home/Otot';
@@ -15,7 +14,6 @@ export default function Home({ ready, onHeroReady }) {
   return (
     <>
       <Hero ready={ready} onHeroReady={onHeroReady} />
-      <MarqueeSection />
       <div className="bg-dark-green"><Impact parts={IMPACT} /></div>
       <HorizontalTrack items={HORIZONTAL} />
       <Otot />

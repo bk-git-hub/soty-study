@@ -1,51 +1,122 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { gsap, ScrollTrigger } from '../../lib/gsap';
-import { useNavTheme } from '../../lib/navTheme';
+import { ScrollTrigger } from '../../lib/gsap';
 import { cdn } from '../../lib/assets';
 import HeroHead from '../../gl/HeroHead';
+import DarkWaves from '../../gl/DarkWaves';
 import TrackMini from '../../gl/TrackMini';
+import { SIGN_FROM, SIGN_TO, SIGN_REM, TARGET_REM, power1InOut } from '../../gl/scrollOut';
 import HeroTouchLock from '../../components/HeroTouchLock';
+import ScrollSignature from '../../components/ScrollSignature';
+import Marquee from '../../components/Marquee';
 import RiveCanvas from '../../components/RiveCanvas';
 import Eyebrow from '../../components/Eyebrow';
 
 /**
- * Home hero: white page, topographic contour lines, WebGL portrait + glass helmet,
- * "NEXT RACE" card bottom-left with the circuit outline Rive and the helmet-reef Rive.
- * The hero is sticky for ~2 screens; the WebGL head shrinks towards the marquee section target.
+ * Home hero. Sticky for one screen of scrolling, during which the light page (a WebGL viewport, see
+ * gl/scrollOut.js) shrinks to a box in the middle and becomes the photo of "Message from Lando".
+ * Layers, bottom to top:
+ *   0  the dark page with the same flowing contour lines (its own small canvas)
+ *   1  two lines of huge text drifting in opposite directions, by time only (the original: ~85 px/s at
+ *      1440 wide, the same at rest and while scrolling); they pass *behind* the rectangle
+ *   2  the hero canvas: transparent outside the rectangle
+ *   3  the signature, written by the scroll from half way until the box is already scrolling off
+ *      (its own trigger: it runs past the sticky stretch); fixed size, not scaled with the rectangle;
+ *      and the section label above the box
+ *   4  the next-race card, the scroll lock, the phone title
+ * Everything scroll-driven goes through refs and handles: a React state here re-rendered the canvases
+ * at the boundary and cost one frame of 0.5 to 1.3 s (2026-09-20).
  */
+const MARQUEE_REM_PER_S = 6.4; // 85 px/s at 1 rem = 13.33 px
+const CARD_GONE_AT = 0.1;      // estimate: the card is there at 0 px and gone by 120 px of 900
+// The section label fades in with the scroll (stills taken at rest show in-between values, so it is not a
+// timed tween): brightness of its lime mark on the original at 706 / 732 / 754 / 779 / 806 / 855 px of 900
+// = 5 / 50 / 69 / 85 / 95 / 100 %. power2.out over p 0.78..0.95 predicts 48 / 71 / 88 / 97 % for the middle
+// four. (First guess: linear over 0.7..0.8, read off a contact sheet. Wrong on both counts.)
+const LABEL_FROM = 0.78, LABEL_TO = 0.95;
+const power2Out = (u) => 1 - (1 - Math.min(1, Math.max(0, u))) ** 3;
+// between the label's text and the box. First guess 2.5 rem put the lime mark's top at 209 px (1440x900);
+// on the original it sits at 151-152 px: 58 px = 4.35 rem higher (6.85 rem left it 2 px high, hence 6.7).
+const LABEL_GAP_REM = 6.7;
+
 export default function Hero({ ready, onHeroReady }) {
   const ref = useRef(null);
   const progress = useRef(0);
-  // The lock button lives only while the hero fills the screen. It is told so imperatively: a React
-  // state here re-rendered the whole hero at the boundary, and the WebGL canvases with it: one frame
-  // of 467 ms (1440 wide) to 1284 ms (800 wide) exactly where the button faded. A speed bump.
   const lock = useRef(null);
+  const sign = useRef(null);
+  const card = useRef(null), title = useRef(null), label = useRef(null);
   // pointer on the card's helmet row: the whole reveal mask goes on (a ref, so nothing re-renders)
   const helmetHover = useRef(false);
-  useNavTheme(ref, 'dark');
+  const marqueeSpeed = useMemo(() => MARQUEE_REM_PER_S * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 13.33), []);
 
   useEffect(() => {
+    const last = { card: -1, label: -1, theme: '' };
+    const fade = (el, key, v) => {
+      v = Math.min(1, Math.max(0, v));
+      if (!el || Math.abs(v - last[key]) < 0.004) return;
+      last[key] = v; el.style.opacity = v; el.style.pointerEvents = v > 0.5 ? '' : 'none';
+    };
+    const apply = (p) => {
+      progress.current = p;
+      lock.current?.setOnHero(p < 0.3);
+      fade(card.current, 'card', 1 - p / CARD_GONE_AT);
+      if (title.current) title.current.style.opacity = Math.min(1, Math.max(0, 1 - p / CARD_GONE_AT));
+      fade(label.current, 'label', power2Out((p - LABEL_FROM) / (LABEL_TO - LABEL_FROM)));
+      // nav: dark while the light page is still under it, light once the rectangle's top has passed below
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const top = power1InOut(p) * (window.innerHeight - TARGET_REM[1] * rem) / 2;
+      const theme = top > 48 ? 'light' : 'dark';
+      if (theme !== last.theme) { last.theme = theme; document.documentElement.dataset.navTheme = theme; }
+    };
     const st = ScrollTrigger.create({
       trigger: ref.current, start: 'top top', end: '+=100%', scrub: true,
-      onUpdate: (self) => { progress.current = self.progress; lock.current?.setOnHero(self.progress < 0.3); },
+      onUpdate: (self) => apply(self.progress),
+      onRefresh: (self) => apply(self.progress),
     });
-    return () => st.kill();
+    apply(0);
+    // the signature's stretch, in scroll px from the hero's top (numbers, so it can end after the sticky part)
+    const top = () => ref.current.getBoundingClientRect().top + window.scrollY;
+    const signSt = ScrollTrigger.create({
+      start: () => top() + window.innerHeight * SIGN_FROM, end: () => top() + window.innerHeight * SIGN_TO, scrub: true, invalidateOnRefresh: true,
+      onUpdate: (self) => sign.current?.set(self.progress), onRefresh: (self) => sign.current?.set(self.progress),
+    });
+    return () => { st.kill(); signSt.kill(); };
   }, []);
 
   return (
-    <div ref={ref} className="relative bg-[#fcfcfa] text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
+    <div ref={ref} className="relative bg-dark-green text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
       <div className="sticky top-0 h-[calc(var(--vh)*100)] overflow-clip">
-        {/* the contour lines are drawn in WebGL now (src/gl/BackgroundWaves.jsx) */}
-        <section className="relative h-full flex items-center justify-center">
+        <section className="relative h-full">
+          {/* 0: the dark page */}
+          <div className="absolute inset-0"><DarkWaves progressRef={progress} /></div>
+
+          {/* 1: the two lines, behind the rectangle */}
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex flex-col gap-[0.35rem] select-none pointer-events-none" aria-hidden>
+            <Marquee speed={marqueeSpeed} direction="left" gap="2.2rem">
+              <span className="t-impact-lg-serif whitespace-nowrap text-lime-off">WE DID IT AT HOME</span>
+            </Marquee>
+            <Marquee speed={marqueeSpeed} direction="right" gap="2.2rem">
+              <span className="t-impact-lg whitespace-nowrap text-[#dde1d2]">A British GP weekend I will remember forever</span>
+            </Marquee>
+          </div>
+
+          {/* 2: the hero canvas (contour lines, photo, helmet), drawn into the shrinking rectangle */}
           <div className="absolute inset-0 z-10">
             <HeroHead onReady={onHeroReady} progressRef={progress} helmetHover={helmetHover} />
           </div>
           <h1 className="sr-only">Lando Norris</h1>
           <h2 className="sr-only">2025 McLaren Formula 1 Driver</h2>
 
+          {/* 3: signature and section label */}
+          <ScrollSignature ref={sign} className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 max-w-none pointer-events-none" style={{ width: `${SIGN_REM[0]}rem`, height: `${SIGN_REM[1]}rem` }} />
+          <div ref={label} className="absolute inset-x-0 z-20 flex flex-col items-center gap-[var(--gap)] text-center text-white opacity-0 pointer-events-none"
+               style={{ bottom: `calc(50% + ${TARGET_REM[1] / 2}rem + ${LABEL_GAP_REM}rem)` }}>
+            <img src={cdn('ln4-LN-logo-svg.svg')} alt="" className="w-[2.4rem] h-[2.4rem]" />
+            <Eyebrow>Message from lando</Eyebrow>
+          </div>
+
           {/* next race card */}
-          <div className="absolute left-[var(--gap)] bottom-[var(--gap)] z-10 w-[7.4375rem] h-[15.25rem] text-dark-green-tint-2 max-[479px]:hidden"
+          <div ref={card} className="absolute left-[var(--gap)] bottom-[var(--gap)] z-20 w-[7.4375rem] h-[15.25rem] text-dark-green-tint-2 max-[479px]:hidden"
                style={{ clipPath: 'ellipse(100% 120% at 50% 0)' }}>
             <svg className="absolute inset-0 -z-[1] w-full h-full" viewBox="0 0 119 244" fill="none" aria-hidden>
               <path d="M118.5 6v232a5.5 5.5 0 0 1-5.5 5.5H6A5.5 5.5 0 0 1 .5 238V25A5.5 5.5 0 0 1 6 19.5h46.346c4.695 0 9.167-2 12.297-5.498l7.46-8.337A15.5 15.5 0 0 1 83.653.5H113a5.5 5.5 0 0 1 5.5 5.5Z" stroke="currentColor" />
@@ -76,7 +147,7 @@ export default function Hero({ ready, onHeroReady }) {
           <HeroTouchLock ref={lock} ready={ready} />
 
           {/* mobile title */}
-          <div className="hidden max-[991px]:flex absolute inset-x-0 top-[7rem] flex-col items-center gap-3">
+          <div ref={title} className="hidden max-[991px]:flex absolute inset-x-0 top-[7rem] z-20 flex-col items-center gap-3 pointer-events-none">
             <img src={cdn('ln4-lando-norris-text-mobile.svg')} alt="Lando Norris" className="w-[60vw]" />
             <Eyebrow>mclaren f1 since 2019</Eyebrow>
           </div>
