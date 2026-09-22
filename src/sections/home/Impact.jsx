@@ -11,11 +11,15 @@ const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt
  * `parts`: strings are plain text; one-element arrays are the emphasised serif words.
  *
  * The text is injected as raw HTML so SplitText can restructure it without fighting React's
- * reconciler (React never diffs inside a dangerouslySetInnerHTML node).
+ * reconciler (React never diffs inside a dangerouslySetInnerHTML node). The {__html} object must be
+ * stable: React 19 rewrites innerHTML whenever that object is a new one, string equal or not, and this
+ * component re-renders when the hero reports ready. With a fresh literal each render the split lines
+ * (and any reveal on them) were wiped a few seconds after load, silently. Since day 0 (found 2026-09-22).
  */
 export default function Impact({ parts, eyebrow = 'mclaren f1 since 2019', icon = true, className = '' }) {
   const ref = useRef(null);
   const html = useMemo(() => parts.map((p) => (Array.isArray(p) ? `<strong class="text-lime-off">${escapeHtml(p[0])}</strong>` : escapeHtml(p))).join(''), [parts]);
+  const inner = useMemo(() => ({ __html: html }), [html]);
 
   useEffect(() => {
     const el = ref.current.querySelector('.impact-text');
@@ -36,7 +40,7 @@ export default function Impact({ parts, eyebrow = 'mclaren f1 since 2019', icon 
           {icon && <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_play" inputs={{ 'color_green-off-white-2': true }} className="w-[5rem] h-[2.6rem] mx-auto" />}
           <Eyebrow>{eyebrow}</Eyebrow>
         </div>
-        <div className="impact-text t-impact-lg" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="impact-text t-impact-lg" dangerouslySetInnerHTML={inner} />
       </div>
     </section>
   );
