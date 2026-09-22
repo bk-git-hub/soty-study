@@ -96,7 +96,8 @@ canvas { display: block; }
    ------------------------------------------------------------------ */
 .t-eyebrow { font-family: var(--font-sans); font-variation-settings: "wght" 700, "wdth" 100; font-size: .625rem; line-height: 1; text-transform: uppercase; letter-spacing: 0; }
 .t-eyebrow.large { font-variation-settings: "wght" 812, "wdth" 81.3; font-size: 1.125rem; letter-spacing: -.01rem; }
-.t-impact-lg { font-size: var(--text-impact); font-variation-settings: "wght" 660, "wdth" 93; letter-spacing: -.0625rem; text-transform: uppercase; line-height: .906; }
+/* line-height .9, not the .906 read on day 0: the original's impact lines compute to 95.25 px at 105.83 px (DOM, 2026-09-22) */
+.t-impact-lg { font-size: var(--text-impact); font-variation-settings: "wght" 660, "wdth" 93; letter-spacing: -.0625rem; text-transform: uppercase; line-height: .9; }
 .t-impact-lg.reduce { font-variation-settings: "wght" 750, "wdth" 93; letter-spacing: -.25rem; font-size: 7rem; line-height: .816; }
 .t-impact-lg-serif { font-family: var(--font-serif); font-weight: 700; font-size: 8.25rem; letter-spacing: -.1875rem; line-height: .83; text-transform: none; }
 .t-impact-reg { font-variation-settings: "wght" 750, "wdth" 93; font-size: 7rem; letter-spacing: -.25rem; text-transform: uppercase; line-height: .816; }
@@ -204,4 +205,5 @@ html.nav-scrolled .nav-mark { opacity: 0; pointer-events: none; }
    insets, tweened separately. */
 .hl { position: relative; display: inline-block; vertical-align: top; }
 .hl-text { visibility: hidden; }
-.hl-block { position: absolute; inset: 0; background: var(--color-lime-off); pointer-events: none; --hl-l: 0%; --hl-r: 100%; clip-path: inset(0 var(--hl-r) 0 var(--hl-l)); }
+/* 1 px over the line box top and bottom: stacked lines' blocks meet at fractional rows and their anti-aliased edges left a faint dark seam between them */
+.hl-block { position: absolute; inset: -1px 0; background: var(--color-lime-off); pointer-events: none; --hl-l: 0%; --hl-r: 100%; clip-path: inset(0 var(--hl-r) 0 var(--hl-l)); }
