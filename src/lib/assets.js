@@ -1,7 +1,12 @@
 // Resolves asset names to local paths.
 // Local dev uses the original site's media, downloaded into public/orig/ (gitignored, never committed).
 // The public build will swap these for self-made / licensed assets in public/assets/.
-import index from '../data/orig-index.js';
+// The index of the downloaded originals (name -> CDN filename) is generated locally and gitignored too. It
+// is loaded through a glob so that a clone without it still builds: the glob then matches nothing, the
+// index is empty and cdn() hands out the placeholder. (A plain import broke every public build since
+// day 0; noticed on 2026-09-22 while checking the commits before a push.)
+const found = import.meta.glob('../data/orig-index.js', { eager: true });
+const index = found['../data/orig-index.js']?.default ?? {};
 
 const ORIG = '/orig/cdn/';
 const RUNTIME = '/orig/runtime/';
