@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ScrollTrigger } from '../../lib/gsap';
 import { cdn } from '../../lib/assets';
 import HeroHead from '../../gl/HeroHead';
-import DarkWaves from '../../gl/DarkWaves';
 import TrackMini from '../../gl/TrackMini';
 import { SIGN_FROM, SIGN_TO, TARGET_REM, power1InOut } from '../../gl/scrollOut';
 import HeroTouchLock from '../../components/HeroTouchLock';
@@ -16,7 +15,7 @@ import Eyebrow from '../../components/Eyebrow';
  * Home hero. Sticky for one screen of scrolling, during which the light page (a WebGL viewport, see
  * gl/scrollOut.js) shrinks to a box in the middle and becomes the photo of "Message from Lando".
  * Layers, bottom to top:
- *   0  the dark page with the same flowing contour lines (its own small canvas)
+ *   0  the dark page with the same flowing contour lines (PageWaves, the page-wide canvas behind everything)
  *   1  two lines of huge text drifting in opposite directions, by time only (the original: ~85 px/s at
  *      1440 wide, the same at rest and while scrolling); they pass *behind* the rectangle
  *   2  the hero canvas: transparent outside the rectangle
@@ -87,12 +86,9 @@ export default function Hero({ ready, onHeroReady }) {
   }, []);
 
   return (
-    <div ref={ref} className="relative bg-dark-green text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
+    <div ref={ref} className="relative text-dark-green" style={{ height: 'calc(var(--vh) * 200)' }}>
       <div className="sticky top-0 h-[calc(var(--vh)*100)] overflow-clip">
         <section className="relative h-full">
-          {/* 0: the dark page */}
-          <div className="absolute inset-0"><DarkWaves progressRef={progress} /></div>
-
           {/* 1: the two lines, behind the rectangle */}
           <div className="absolute inset-0 select-none pointer-events-none" aria-hidden>
             <Marquee className="hero-line hero-line-serif" speed={marqueeSpeed} direction="left">

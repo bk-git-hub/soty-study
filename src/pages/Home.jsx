@@ -1,3 +1,4 @@
+import PageWaves from '../gl/PageWaves';
 import Hero from '../sections/home/Hero';
 import Impact from '../sections/home/Impact';
 import HorizontalTrack from '../sections/home/HorizontalTrack';
@@ -13,8 +14,11 @@ import { HORIZONTAL, IMPACT } from '../data/home';
 export default function Home({ ready, onHeroReady }) {
   return (
     <>
+      {/* the live contour field behind the hero and the impact statement (the sections below paint over
+          it); the hero's sticky stretch is one screen high, below it the field is attached to the page */}
+      <PageWaves scrollFrom={() => window.innerHeight} />
       <Hero ready={ready} onHeroReady={onHeroReady} />
-      <div className="bg-dark-green"><Impact parts={IMPACT} /></div>
+      <Impact parts={IMPACT} />
       <HorizontalTrack items={HORIZONTAL} />
       <Otot />
       <Helmets />

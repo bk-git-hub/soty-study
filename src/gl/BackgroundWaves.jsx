@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 import { SCROLL_FILTER_GLSL } from './scrollOut';
+import { wavesPalette, updateWavesPalette } from '../lib/waves';
 
 /*
  * The hero background: slowly flowing contour lines ("white waves").
@@ -22,10 +23,13 @@ import { SCROLL_FILTER_GLSL } from './scrollOut';
  *
  * R = band (0/1), G = the wrapped noise value, kept for the paint / hover steps that read it.
  *
- * The same component also draws the dark layer behind the hero (palette="dark", its own small canvas):
- * on scroll the light page shrinks to a rectangle and the dark page around it carries the same flowing
- * lines. On the original the lines inside the rectangle are a scaled-down copy of the ones outside
- * (they do not join at the rectangle's edge), so both canvases run the noise on one shared clock.
+ * The same component also draws the page behind everything (palette="page", PageWaves.jsx): the dark
+ * page around the hero's shrinking rectangle and, below the hero, the field behind the impact statement.
+ * On the original the lines inside the rectangle are a scaled-down copy of the ones outside (they do not
+ * join at the rectangle's edge), so both canvases run the noise on one shared clock. Below the hero the
+ * lines are attached to the page (measured: they move with the scroll), so there the noise is sampled
+ * in page space; during the hero's sticky stretch they stay put (measured too), hence the offset starts
+ * where the hero's stretch ends. Colours come from src/lib/waves.js.
  */
 
 // params of the original's head scene
@@ -100,12 +104,13 @@ const NOISE_FRAG = /* glsl */ `
   precision highp float;
   ${SIMPLEX}
   varying vec2 vUv;
-  uniform float uAspect, uTime, uPace;
+  uniform float uAspect, uTime, uPace, uScroll;
   uniform vec2 uMouse; // -1..1, +y up
   void main() {
-    vec2 uv = vUv; uv.x *= uAspect;
+    // page space: the field slides with the scroll (uScroll in viewport heights; 0 while nothing scrolls)
+    vec2 uv = vUv; uv.x *= uAspect; uv.y -= uScroll;
     // cone around the pointer, alive only while it moves (uPace = eased speed)
-    vec2 mouse = uMouse * 0.5 + 0.5; mouse.x *= uAspect;
+    vec2 mouse = uMouse * 0.5 + 0.5; mouse.x *= uAspect; mouse.y -= uScroll;
     float cursor = clamp((1.0 - distance(mouse, uv) * ${CURSOR_SCALE.toFixed(1)}) * uPace, ${CURSOR_BOUNCE.toFixed(2)}, 1.0);
     // slow noise that bends the coordinates of the main one
     float warp = 0.5 + 0.5 * snoise(vec3(uv * ${DISTORT_SCALE.toFixed(1)}, uTime * ${(SPEED * 0.1).toFixed(3)}));
@@ -158,7 +163,7 @@ const SCREEN_FRAG = /* glsl */ `
   }
 `;
 
-export default function BackgroundWaves({ pointer, reveal, view, palette = 'light', active }) {
+export default function BackgroundWaves({ pointer, reveal, view, palette = 'light', active, scrollFrom }) {
   const { size, gl } = useThree();
   // The noise lives at CSS-pixel resolution like the original's (not multiplied by the pixel ratio).
   // A plain 8-bit target is enough: it stores a 0/1 band and a 0..1 ramp.
@@ -170,7 +175,7 @@ export default function BackgroundWaves({ pointer, reveal, view, palette = 'ligh
     const camera = new THREE.Camera();
     const material = new THREE.ShaderMaterial({
       vertexShader: QUAD_VERT, fragmentShader: NOISE_FRAG, depthTest: false, depthWrite: false,
-      uniforms: { uAspect: { value: 1 }, uTime: { value: 0 }, uPace: { value: 0 }, uMouse: { value: new THREE.Vector2() } },
+      uniforms: { uAspect: { value: 1 }, uTime: { value: 0 }, uPace: { value: 0 }, uScroll: { value: 0 }, uMouse: { value: new THREE.Vector2() } },
     });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
     mesh.frustumCulled = false; scene.add(mesh);
@@ -201,6 +206,14 @@ export default function BackgroundWaves({ pointer, reveal, view, palette = 'ligh
     // taken in the rectangle's own space (the quad below fills the viewport = the rectangle)
     u.uAspect.value = view ? view.w / view.h : size.width / size.height;
     u.uTime.value = wavesTime();
+    if (palette === 'page') {
+      // below the hero's sticky stretch the field is attached to the page; inside it, fixed (see the header)
+      const from = scrollFrom ? scrollFrom() : 0;
+      u.uScroll.value = Math.max(0, window.scrollY - from) / size.height;
+      updateWavesPalette(window.scrollY);
+      const su = screen.current.material.uniforms;
+      su.uBackground.value.copy(wavesPalette.bg); su.uOutline.value.copy(wavesPalette.line);
+    }
     if (pointer) { if (view) view.toLocal(pointer.eased.current, local); else local.copy(pointer.eased.current); u.uMouse.value.copy(local); u.uPace.value = pointer.pace.current * 4; }
     gl.setRenderTarget(fbo);
     gl.render(off.scene, off.camera);
