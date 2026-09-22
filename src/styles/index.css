@@ -198,3 +198,10 @@ html.nav-scrolled .nav-mark { opacity: 0; pointer-events: none; }
 /* Helmet card reveal (hover image wipes in from the top with an ellipse) */
 .helmet-reveal { clip-path: ellipse(100% 0% at 50% 0); transform: scale(1.05); transition: clip-path var(--anim-default), transform var(--anim-default); }
 .helmet-card:hover .helmet-reveal { clip-path: ellipse(100% 120% at 50% 0%); transform: scale(1); }
+
+/* Highlight reveal (src/lib/highlight.js): a lime-off block covers the text from the left, then leaves to
+   the right. The text is hidden until the block is over it. --hl-r / --hl-l are the block's right / left
+   insets, tweened separately. */
+.hl { position: relative; display: inline-block; vertical-align: top; }
+.hl-text { visibility: hidden; }
+.hl-block { position: absolute; inset: 0; background: var(--color-lime-off); pointer-events: none; --hl-l: 0%; --hl-r: 100%; clip-path: inset(0 var(--hl-r) 0 var(--hl-l)); }

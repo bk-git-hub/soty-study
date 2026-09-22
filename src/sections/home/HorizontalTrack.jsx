@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { gsap, ScrollTrigger } from '../../lib/gsap';
+import { highlightReveal } from '../../lib/highlight';
 import { cdn } from '../../lib/assets';
 import RiveCanvas from '../../components/RiveCanvas';
 import Contours from '../shared/Contours';
@@ -9,6 +10,9 @@ import Contours from '../shared/Contours';
  * Vertical scroll is mapped to a horizontal translate of the track (scrub), images get a slight
  * counter-parallax (they are 4rem larger than their frames and drift against travel), and the
  * section background cross-fades (dark-green -> white on home) as the track passes.
+ *
+ * Captions come in with the highlight sweep (src/lib/highlight.js), each when it enters the viewport:
+ * horizontally while the track is pinned, vertically on narrow layouts.
  *
  * Item kinds: {caption,img,w,h} photo | {quote,text,signature} | {title,img} big serif title card |
  * {subtitle,desc} small serif title with eyebrow description.
@@ -29,10 +33,23 @@ export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed
       t.querySelectorAll('.h-img').forEach((img) => {
         gsap.fromTo(img, { x: '-2rem' }, { x: '2rem', ease: 'none', scrollTrigger: { trigger: img.parentElement, containerAnimation: tween, start: 'left right', end: 'right left', scrub: true } });
       });
+      const reveals = [...t.querySelectorAll('.h-caption')].map((cap) => {
+        const tl = highlightReveal([cap]);
+        ScrollTrigger.create({ trigger: cap, containerAnimation: tween, start: 'left 90%', once: true, onEnter: () => tl.play() });
+        return tl;
+      });
       if (from !== to) {
         gsap.fromTo(wrap.current, { backgroundColor: from, color: captionFrom }, { backgroundColor: to, color: captionTo, ease: 'none', scrollTrigger: { trigger: wrap.current, start: 'top top', end: () => `+=${dist()}`, scrub: true } });
       }
-      return () => tween.kill();
+      return () => { tween.kill(); reveals.forEach((tl) => tl.revert()); };
+    });
+    mm.add('(max-width: 991px)', () => {
+      const reveals = [...track.current.querySelectorAll('.h-caption')].map((cap) => {
+        const tl = highlightReveal([cap]);
+        ScrollTrigger.create({ trigger: cap, start: 'top 90%', once: true, onEnter: () => tl.play() });
+        return tl;
+      });
+      return () => reveals.forEach((tl) => tl.revert());
     });
     return () => mm.revert();
   }, [items]);
@@ -63,7 +80,7 @@ export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed
     );
     return (
       <div key={j} className="relative flex flex-col gap-[var(--gap)]" style={{ marginTop: it.offset ? `${it.offset}rem` : 0 }}>
-        <div className="t-eyebrow">{it.caption}</div>
+        <div className="t-eyebrow h-caption">{it.caption}</div>
         <div className="overflow-clip flex items-center justify-end" style={{ width: `${it.w}rem`, height: `${it.h}rem` }}>
           <img src={cdn(it.img)} alt="" className="h-img flex-none object-cover pointer-events-none" style={{ width: 'calc(100% + 4rem)', height: 'calc(100% + 4rem)', maxWidth: 'none' }} />
         </div>
