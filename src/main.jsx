@@ -2,6 +2,8 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
+// the Google Fonts build of Mona Sans (wdth + wght axes), the build the original loads: see index.css
+import '@fontsource-variable/mona-sans/wdth.css';
 import './styles/index.css';
 
 if (import.meta.env.DEV) {

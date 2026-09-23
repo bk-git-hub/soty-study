@@ -19,7 +19,7 @@
   --color-white: #f4f4ed;
   --color-cream: #efefe5;
 
-  --font-sans: "Mona Sans", Arial, sans-serif;
+  --font-sans: "Mona Sans Variable", Arial, sans-serif;
   --font-serif: "Brier", "Instrument Serif", Georgia, serif;
 }
 
@@ -49,15 +49,12 @@
 @media (max-width: 767px) { :root { --min-width: 480px; --max-width: 767px; } }
 @media (max-width: 479px) { :root { --min-width: 320px; --max-width: 479px; --design-unit: 48; --padding-container: 1rem; } }
 
-/* Fonts. Mona Sans (OFL, public/fonts). Brier is a commercial face: local dev loads the original
-   from the gitignored public/orig folder; the public build falls back to Instrument Serif. */
-@font-face {
-  font-family: "Mona Sans";
-  src: url("/fonts/MonaSans-Variable.ttf") format("truetype");
-  font-weight: 200 900;
-  font-stretch: 75% 125%;
-  font-display: swap;
-}
+/* Fonts. Mona Sans (OFL) comes from @fontsource-variable/mona-sans (imported in main.jsx): the Google
+   Fonts build with wdth + wght axes, the same build the original loads. The GitHub v2 TTF that was here
+   until 2026-09-23 has an opsz axis as well and set 1.3-1.7 % narrower at body sizes (the ON TRACK
+   description wrapped a word later than the original's; no fixed opsz value reproduced the other build).
+   That TTF stays in public/fonts for scripts/make-visor.mjs. Brier is a commercial face: local dev loads
+   the original from the gitignored public/orig folder; the public build falls back to Instrument Serif. */
 @font-face {
   font-family: "Brier";
   src: url("/orig/runtime/fonts/Brier-Bold.woff2") format("woff2");
