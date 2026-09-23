@@ -128,6 +128,8 @@ canvas { display: block; }
 .serif { font-family: var(--font-serif); font-weight: 700; text-transform: none; }
 strong { font-family: var(--font-serif); font-weight: 700; }
 .strong-lime strong { color: var(--color-lime-off); }
+/* a strong that only means it: the body font stays (the variation setting keeps the weight too) */
+.strong-plain strong { font-family: inherit; }
 
 @media (max-width: 991px) {
   .t-eyebrow { font-size: .8rem; }

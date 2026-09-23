@@ -18,6 +18,8 @@ import { gsap } from './gsap';
  *    below the screen animate unseen, so the stagger is time, not a trigger per line
  *  - the block is the line box (taller than the glyphs), the same #b2c73a as the lime words
  * The captions of the photos below use the same effect at eyebrow size (screencast, blocks ~90 x 9 px).
+ * On the white ON / OFF TRACK section the same sweep runs with a dark-green block over the titles, the
+ * descriptions and the buttons, each on its own trigger (virtual-clock frames, 2026-09-23): `color`.
  */
 export const HL_GROW = 0.6, HL_EXIT_AT = 0.39, HL_EXIT = 0.42, HL_STAGGER = 0.15;
 
@@ -27,7 +29,7 @@ export const HL_GROW = 0.6, HL_EXIT_AT = 0.39, HL_EXIT = 0.42, HL_STAGGER = 0.15
  * width of the text, so the block covers the ink and not the whole row.
  *   const tl = highlightReveal([...lines]); tl.play();  // or drive it from a ScrollTrigger
  */
-export function highlightReveal(elements, { stagger = HL_STAGGER } = {}) {
+export function highlightReveal(elements, { stagger = HL_STAGGER, color } = {}) {
   const tl = gsap.timeline({ paused: true });
   const wraps = [];
   elements.forEach((el, i) => {
@@ -35,6 +37,7 @@ export function highlightReveal(elements, { stagger = HL_STAGGER } = {}) {
     const text = document.createElement('span'); text.className = 'hl-text';
     while (el.firstChild) text.appendChild(el.firstChild);
     const block = document.createElement('span'); block.className = 'hl-block'; block.setAttribute('aria-hidden', 'true');
+    if (color) block.style.background = color;
     wrap.append(text, block); el.appendChild(wrap); wraps.push(wrap);
     // the two edges are independent tweens on two custom properties (clip-path insets), so the grow can
     // keep finishing its last 3 % while the exit has already begun, as on the original
