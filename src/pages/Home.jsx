@@ -3,11 +3,6 @@ import Hero from '../sections/home/Hero';
 import Impact from '../sections/home/Impact';
 import HorizontalTrack from '../sections/home/HorizontalTrack';
 import Otot from '../sections/home/Otot';
-import Helmets from '../sections/home/Helmets';
-import Callout from '../sections/home/Callout';
-import Store from '../sections/home/Store';
-import Collabs from '../sections/home/Collabs';
-import SocialsCallout from '../sections/home/SocialsCallout';
 import Footer from '../components/Footer';
 import { HORIZONTAL, IMPACT } from '../data/home';
 
@@ -21,13 +16,8 @@ export default function Home({ ready, onHeroReady }) {
       <Impact parts={IMPACT} />
       <HorizontalTrack items={HORIZONTAL} waves />
       <Otot />
-      <Helmets />
-      <div className="bg-black text-white">
-        <Callout text="See more helmets and highlights from Lando on the track" cta="view on track" to="/on-track" />
-      </div>
-      <Store />
-      <Collabs />
-      <SocialsCallout />
+      {/* the sections after ON / OFF TRACK (helmets, store, partners, socials) are out for now: the user
+          asked to stop the page here (2026-09-23); their components stay in src/sections/home */}
       <Footer theme="white" />
     </>
   );
