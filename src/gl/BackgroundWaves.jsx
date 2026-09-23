@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 import { SCROLL_FILTER_GLSL } from './scrollOut';
-import { wavesPalette, updateWavesPalette } from '../lib/waves';
+import { wavesPalette, updateWavesPalette, tickFieldClock, fieldClock } from '../lib/waves';
 
 /*
  * The hero background: slowly flowing contour lines ("white waves").
@@ -41,9 +41,8 @@ const COLOR_CURSOR_FOREGROUND = '#CFD2C5';
 const COLOR_CURSOR_OUTLINE = '#E8E8DF';
 // the dark page around the shrinking rectangle, as measured on screen (page 40,44,32, lines 54,59,37)
 const DARK_BACKGROUND = [40, 44, 32], DARK_OUTLINE = [54, 59, 37];
-// one clock for every instance, so the dark layer and the hero show the same field at the same moment
-const T0 = performance.now();
-const wavesTime = () => (performance.now() - T0) / 1000;
+// one clock for every instance (src/lib/waves.js): the hero and the page show the same field at the same
+// moment, and it stops below the gallery, where the original's lines are static
 const SCALE = 1, SPEED = 0.1, DISTORT_SCALE = 1, DISTORT_INTENSITY = 0.5, NOISE_DETAIL = 3;
 const CURSOR_INTENSITY = 0.15, CURSOR_SCALE = 3, CURSOR_BOUNCE = -0.75;
 
@@ -132,7 +131,7 @@ const SCREEN_FRAG = /* glsl */ `
   varying vec2 vUv;
   uniform sampler2D tNoise, tVelocity;
   uniform vec2 uTexel;
-  uniform float uDebug, uHover, uAlive;
+  uniform float uDebug, uHover, uAlive, uThin;
   uniform vec3 uBackground, uOutline, uCursorBackground, uCursorForeground, uCursorOutline;
   ${REVEAL_MASK_GLSL}
   ${SCROLL_FILTER_GLSL}
@@ -143,6 +142,11 @@ const SCREEN_FRAG = /* glsl */ `
     if (texture2D(tNoise, vUv - vec2(uTexel.x, 0.0)).r != c) e = 1.0;
     if (texture2D(tNoise, vUv + vec2(0.0, uTexel.y)).r != c) e = 1.0;
     if (texture2D(tNoise, vUv - vec2(0.0, uTexel.y)).r != c) e = 1.0;
+    // 1 px lines (the white sections): mark one side of every boundary only
+    float e1 = 0.0;
+    if (texture2D(tNoise, vUv + vec2(uTexel.x, 0.0)).r != c) e1 = 1.0;
+    if (texture2D(tNoise, vUv + vec2(0.0, uTexel.y)).r != c) e1 = 1.0;
+    e = mix(e, e1, uThin);
     vec3 page = mix(uBackground, uOutline, e);
     // The paint: inside the reveal mask the same bands are *filled* (band 0 / band 1 in two greys) and
     // the borders take the lighter grey, so the stroke follows the grain of the waves instead of being
@@ -186,7 +190,7 @@ export default function BackgroundWaves({ pointer, reveal, view, palette = 'ligh
   // output, so what reaches the screen is lighter than the hex: page 252,252,250 and lines 231,231,221
   // (measured), not 248,248,243 / 203,203,185. Same here: no sRGB -> linear conversion on the way in.
   const uniforms = useMemo(() => ({
-    tNoise: { value: null }, tVelocity: { value: null }, uHover: { value: 0 }, uAlive: { value: 1 }, uFilter: { value: 0 }, uTexel: { value: new THREE.Vector2(1, 1) },
+    tNoise: { value: null }, tVelocity: { value: null }, uHover: { value: 0 }, uAlive: { value: 1 }, uFilter: { value: 0 }, uThin: { value: 0 }, uTexel: { value: new THREE.Vector2(1, 1) },
     uDebug: { value: import.meta.env.DEV ? ({ noise: 1, mask: 2 })[new URLSearchParams(location.search).get('debug')] || 0 : 0 },
     // (the dark pair was measured on screen, so it goes in as real sRGB and comes out as measured)
     uBackground: { value: palette === 'dark' ? new THREE.Color().setRGB(...DARK_BACKGROUND.map((v) => v / 255), THREE.SRGBColorSpace) : new THREE.Color().setStyle(COLOR_BACKGROUND, THREE.LinearSRGBColorSpace) },
@@ -205,15 +209,15 @@ export default function BackgroundWaves({ pointer, reveal, view, palette = 'ligh
     // inside the shrinking rectangle the field keeps the rectangle's proportions, and the pointer is
     // taken in the rectangle's own space (the quad below fills the viewport = the rectangle)
     u.uAspect.value = view ? view.w / view.h : size.width / size.height;
-    u.uTime.value = wavesTime();
     if (palette === 'page') {
       // below the hero's sticky stretch the field is attached to the page; inside it, fixed (see the header)
       const from = scrollFrom ? scrollFrom() : 0;
       u.uScroll.value = Math.max(0, window.scrollY - from) / size.height;
       updateWavesPalette(window.scrollY);
+      u.uTime.value = tickFieldClock(performance.now(), window.scrollY);
       const su = screen.current.material.uniforms;
-      su.uBackground.value.copy(wavesPalette.bg); su.uOutline.value.copy(wavesPalette.line);
-    }
+      su.uBackground.value.copy(wavesPalette.bg); su.uOutline.value.copy(wavesPalette.line); su.uThin.value = wavesPalette.thin;
+    } else u.uTime.value = fieldClock.t;
     if (pointer) { if (view) view.toLocal(pointer.eased.current, local); else local.copy(pointer.eased.current); u.uMouse.value.copy(local); u.uPace.value = pointer.pace.current * 4; }
     gl.setRenderTarget(fbo);
     gl.render(off.scene, off.camera);

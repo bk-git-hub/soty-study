@@ -5,7 +5,7 @@ import { cdn } from '../../lib/assets';
 import Button from '../../components/Button';
 import RiveCanvas from '../../components/RiveCanvas';
 import Eyebrow from '../../components/Eyebrow';
-import Contours from '../shared/Contours';
+import { setWaveStop, removeWaveStop, WAVES_WHITE } from '../../lib/waves';
 
 /**
  * "ON TRACK / OFF TRACK" split. Sticky screen: two big titles (serif ON/OFF + Mona TRACK),
@@ -40,10 +40,12 @@ export default function Otot() {
     </div>
   );
 
+  // the page-wide field behind this section: white, 1 px lines, frozen (see src/lib/waves.js)
+  useEffect(() => { setWaveStop('otot', { el: ref.current, pair: WAVES_WHITE }); return () => removeWaveStop('otot'); }, []);
+
   return (
-    <div ref={ref} className="relative bg-white text-dark-green-tint-1" style={{ height: 'calc(var(--vh) * 300)' }}>
+    <div ref={ref} className="relative text-dark-green-tint-1" style={{ height: 'calc(var(--vh) * 300)' }}>
       <div className="sticky top-0 h-[calc(var(--vh)*100)] overflow-clip">
-        <Contours className="absolute inset-0 text-[#dcdcd3]" />
         <section className="relative h-full flex items-center justify-center z-10">
           <div className="flex gap-[calc(var(--gap)*3)]">
             <Col side="l" serif="ON" text="results" rest=", career stats and photos from trackside." to="/on-track" rotate />

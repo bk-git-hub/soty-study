@@ -19,7 +19,7 @@ export default function Home({ ready, onHeroReady }) {
       <PageWaves scrollFrom={() => window.innerHeight} />
       <Hero ready={ready} onHeroReady={onHeroReady} />
       <Impact parts={IMPACT} />
-      <HorizontalTrack items={HORIZONTAL} />
+      <HorizontalTrack items={HORIZONTAL} waves />
       <Otot />
       <Helmets />
       <div className="bg-black text-white">

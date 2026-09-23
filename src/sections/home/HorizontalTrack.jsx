@@ -4,12 +4,16 @@ import { highlightReveal } from '../../lib/highlight';
 import { cdn } from '../../lib/assets';
 import RiveCanvas from '../../components/RiveCanvas';
 import Contours from '../shared/Contours';
+import { setWaveStop, removeWaveStop, WAVES_DARK, WAVES_WHITE } from '../../lib/waves';
 
 /**
  * Pinned horizontal gallery (home, on-track, off-track).
  * Vertical scroll is mapped to a horizontal translate of the track (scrub), images get a slight
  * counter-parallax (they are 4rem larger than their frames and drift against travel), and the
- * section background cross-fades (dark-green -> white on home) as the track passes.
+ * section background cross-fades (dark-green -> white on home) as the track passes. With `waves` (the home
+ * page) the page-wide field behind it (PageWaves) does the fade instead and freezes here: on the original
+ * the page's grey channel goes 70, 117, 156, 188, 213, 231, 241, 244 every 300 px from the gallery's start
+ * (power1.out over ~2100 px) and the lines stop moving.
  *
  * Captions come in with the highlight sweep (src/lib/highlight.js), each when it enters the viewport:
  * horizontally while the track is pinned, vertically on narrow layouts.
@@ -17,7 +21,7 @@ import Contours from '../shared/Contours';
  * Item kinds: {caption,img,w,h} photo | {quote,text,signature} | {title,img} big serif title card |
  * {subtitle,desc} small serif title with eyebrow description.
  */
-export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed', captionFrom = '#b4b8a5', captionTo = '#535450' }) {
+export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed', captionFrom = '#b4b8a5', captionTo = '#535450', waves = false }) {
   const wrap = useRef(null);
   const track = useRef(null);
 
@@ -38,10 +42,16 @@ export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed
         ScrollTrigger.create({ trigger: cap, containerAnimation: tween, start: 'left 90%', once: true, onEnter: () => tl.play() });
         return tl;
       });
-      if (from !== to) {
+      if (waves) {
+        setWaveStop('gallery', { el: wrap.current, pair: WAVES_DARK, top: () => tween.scrollTrigger.start, fade: { to: WAVES_WHITE, end: () => tween.scrollTrigger.end }, freeze: true });
+        gsap.fromTo(wrap.current, { color: captionFrom }, { color: captionTo, ease: 'power1.out', scrollTrigger: { trigger: wrap.current, start: 'top top', end: () => `+=${dist()}`, scrub: true } });
+        // the nav turns dark once the page behind it is light: power1.out reaches half way at 29 % of the range
+        // (absolute positions: a string start on the pinned element is measured after its pin spacer, 2.5 screens late)
+        ScrollTrigger.create({ start: () => tween.scrollTrigger.start + dist() * 0.29, end: () => tween.scrollTrigger.start + dist() * 0.29 + 1, onEnter: () => { document.documentElement.dataset.navTheme = 'dark'; }, onLeaveBack: () => { document.documentElement.dataset.navTheme = 'light'; } });
+      } else if (from !== to) {
         gsap.fromTo(wrap.current, { backgroundColor: from, color: captionFrom }, { backgroundColor: to, color: captionTo, ease: 'none', scrollTrigger: { trigger: wrap.current, start: 'top top', end: () => `+=${dist()}`, scrub: true } });
       }
-      return () => { tween.kill(); reveals.forEach((tl) => tl.revert()); };
+      return () => { tween.kill(); reveals.forEach((tl) => tl.revert()); removeWaveStop('gallery'); };
     });
     mm.add('(max-width: 991px)', () => {
       const reveals = [...track.current.querySelectorAll('.h-caption')].map((cap) => {
@@ -95,8 +105,8 @@ export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed
   };
 
   return (
-    <section ref={wrap} className="relative overflow-clip" style={{ backgroundColor: from, color: captionFrom }}>
-      <Contours className="absolute inset-0 opacity-40 text-current" />
+    <section ref={wrap} className="relative overflow-clip" style={{ backgroundColor: waves ? 'transparent' : from, color: captionFrom }}>
+      {!waves && <Contours className="absolute inset-0 opacity-40 text-current" />}
       <div ref={track} className="flex flex-none h-[calc(var(--vh)*100)] pl-[75vw] pr-[var(--gap)] pt-[calc(var(--vh)*7)] pb-[calc(var(--gap)*2)] will-change-transform max-[991px]:flex-col max-[991px]:h-auto max-[991px]:pl-[var(--gap)] max-[991px]:gap-[5rem]">
         {items.map((entry, i) => {
           if (entry.spacer) return <div key={i} className="flex-none max-[991px]:hidden" style={{ width: `calc(var(--grid-spacer) * ${entry.spacer})` }} />;
