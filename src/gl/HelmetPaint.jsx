@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { gl as glAsset, model } from '../lib/assets';
+import { model } from '../lib/assets';
+import { helmetMaps, pickLivery } from './helmetMaps';
 import { SCROLL_FILTER_GLSL } from './scrollOut';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 
@@ -27,16 +28,10 @@ import { REVEAL_MASK_GLSL } from './FluidSim';
 
 const DRACO = '/orig/runtime/draco/';
 const SHELL_ROUGHNESS = 0.05; // the original's value
-// The original names five variants (a coin flip picks "Google", otherwise "Lime" by day and "Dark" at
-// night, plus "Grid" and "Disco"), but in its current bundle every one of them except Disco loads the
-// same gold livery. The lime / dark / google / grid files exist on its CDN and are simply not used.
-// (First version here assumed variant name = folder name and painted a lime helmet.)
-// Dev only: ?variant=<folder> to look at the other files.
-const LIVERIES = ['gold', 'lime', 'dark', 'google', 'grid', 'disco'];
-const pickLivery = () => {
-  const forced = import.meta.env.DEV ? new URLSearchParams(location.search).get('variant') : null;
-  return LIVERIES.includes(forced) ? forced : 'gold';
-};
+// Liveries: see helmetMaps.js. Ours ('contour') is the default; the original's files stay reachable in
+// dev with ?variant=<folder> for side-by-side comparison. (The original names five variants, a coin flip
+// picks "Google", otherwise "Lime" by day and "Dark" at night, but its bundle loads the gold file for
+// every one of them except Disco.)
 
 const QUAD_VERT = /* glsl */ `
   varying vec2 vUv;
@@ -64,14 +59,14 @@ export default function HelmetPaint({ reveal, rig, view }) {
   const { gl, scene: pageScene, camera, size } = useThree();
   const livery = useMemo(pickLivery, []);
   const { scene: glb } = useGLTF(model('helmet-21'), DRACO);
+  const maps = useMemo(() => helmetMaps(livery), [livery]);
   const tex = useTexture({
-    base: glAsset(`textures/helmet/webp/${livery}/Norris_Helmet_mat_BaseColor.webp`),
-    normal: glAsset('textures/helmet/webp/Norris_Helmet_mat_Normal.webp'),
-    metallic: glAsset('textures/helmet/webp/Norris_Helmet_mat_Metallic.webp'),
-    glassBase: glAsset('textures/glass/webp/Norris_Glass_mat_BaseColor.webp'),
-    glassRoughness: glAsset('textures/glass/webp/Norris_Glass_mat_Roughness.webp'),
-    glassNormal: glAsset('textures/glass/webp/Norris_Glass_mat_Normal.webp'),
-    matcap: glAsset('textures/plastic/plastic__matcap-02.webp'),
+    base: maps.base,
+    normal: maps.normal,
+    glassBase: maps.glassBase,
+    glassRoughness: maps.glassRoughness,
+    glassNormal: maps.glassNormal,
+    matcap: maps.matcap,
   });
 
   // The memo below must hang on the textures themselves, not on `tex`: useTexture returns a new wrapper
@@ -80,9 +75,9 @@ export default function HelmetPaint({ reveal, rig, view }) {
   // scripts/tex-upload-log.mjs: the 4096 px normal map and friends went to the GPU at 2.8, 3.9, 5.0 s and
   // again mid-scroll at 18 s (R3F re-measures the canvas while scrolling), 250 to 400 ms each time: a
   // second "speed bump" near the end of the hero.
-  const { base, normal, metallic, glassBase, glassRoughness, glassNormal, matcap } = tex;
+  const { base, normal, glassBase, glassRoughness, glassNormal, matcap } = tex;
   const off = useMemo(() => {
-    for (const t of [base, normal, metallic, glassBase, glassRoughness, glassNormal, matcap]) {
+    for (const t of [base, normal, glassBase, glassRoughness, glassNormal, matcap]) {
       if (t.userData.helmetPaintReady) continue; // configure (and upload) each texture once
       t.userData.helmetPaintReady = true;
       // glTF UVs have their origin at the top; no mipmaps, like the original (crisper, a little shimmery)
@@ -99,9 +94,10 @@ export default function HelmetPaint({ reveal, rig, view }) {
     const q = import.meta.env.DEV ? new URLSearchParams(location.search).get('rough') : null;
     const roughness = q !== null && q !== '' && !isNaN(+q) ? +q : SHELL_ROUGHNESS;
     const shell = new THREE.MeshStandardMaterial({ map: base, normalMap: normal, metalness: 1, roughness, envMapIntensity: livery === 'disco' ? 1.5 : 3 });
-    // the visor takes the *helmet's* metallic map in the original; with the default metalness factor of 0
-    // it has no effect, the visor shades as a dark dielectric with sharp HDRI reflections
-    const glass = new THREE.MeshStandardMaterial({ map: glassBase, roughnessMap: glassRoughness, normalMap: glassNormal, metalnessMap: metallic, envMapIntensity: 1.5 });
+    // the original also hands the visor the *helmet's* metallic map, but with the default metalness factor
+    // of 0 it has no effect (the map multiplies the factor), so it is left out: the visor shades as a dark
+    // dielectric with sharp HDRI reflections either way
+    const glass = new THREE.MeshStandardMaterial({ map: glassBase, roughnessMap: glassRoughness, normalMap: glassNormal, envMapIntensity: 1.5 });
     const plastic = new THREE.MeshMatcapMaterial({ matcap, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
     const materials = { helmet: shell, glass, plastic };
 
@@ -116,7 +112,7 @@ export default function HelmetPaint({ reveal, rig, view }) {
     });
     const target = new THREE.WebGLRenderTarget(16, 16, { samples: 2, type: THREE.UnsignedByteType });
     return { scene: new THREE.Scene().add(root), root, target, lit: [shell, glass], materials };
-  }, [glb, livery, base, normal, metallic, glassBase, glassRoughness, glassNormal, matcap]);
+  }, [glb, livery, base, normal, glassBase, glassRoughness, glassNormal, matcap]);
   useEffect(() => () => { off.target.dispose(); Object.values(off.materials).forEach((m) => m.dispose()); }, [off]);
 
   const quad = useRef();

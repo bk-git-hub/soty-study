@@ -2,7 +2,8 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { gl as glAsset, model, hdri } from '../lib/assets';
+import { model, hdri } from '../lib/assets';
+import { helmetMaps, pickLivery } from './helmetMaps';
 import Env from './Env';
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
@@ -15,17 +16,14 @@ const DRACO = '/orig/runtime/draco/';
  */
 function Model({ scrollRef, variant, fill }) {
   const { scene } = useGLTF(model('helmet-21'), DRACO);
-  const [base, normal, rough, metal] = useTexture([
-    glAsset(`textures/helmet/webp/${variant}/Norris_Helmet_mat_BaseColor.webp`),
-    glAsset('textures/helmet/webp/Norris_Helmet_mat_Normal.webp'),
-    glAsset('textures/helmet/webp/Norris_Helmet_mat_Roughness.webp'),
-    glAsset('textures/helmet/webp/Norris_Helmet_mat_Metallic.webp'),
-  ]);
+  // our livery has no roughness / metallic maps (the constants below apply as they are); the original's does
+  const maps = useMemo(() => helmetMaps(variant), [variant]);
+  const { base, normal, roughness: rough, metallic: metal } = useTexture(maps.own ? { base: maps.base, normal: maps.normal } : { base: maps.base, normal: maps.normal, roughness: maps.roughness, metallic: maps.metallic });
   base.colorSpace = THREE.SRGBColorSpace;
-  [base, normal, rough, metal].forEach((t) => { t.flipY = false; });
+  [base, normal, rough, metal].forEach((t) => { if (t) t.flipY = false; });
   // metalness is capped below 1 so the paint still picks up the direct lights even before the
   // HDR environment has loaded (a fully metallic surface with no env map renders black)
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ map: base, normalMap: normal, roughnessMap: rough, metalnessMap: metal, metalness: 0.7, roughness: 0.9, envMapIntensity: 1.4 }), [base, normal, rough, metal]);
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ map: base, normalMap: normal, roughnessMap: rough || null, metalnessMap: metal || null, metalness: 0.7, roughness: 0.9, envMapIntensity: 1.4 }), [base, normal, rough, metal]);
   useEffect(() => { scene.traverse((o) => { if (o.isMesh) o.material = mat; }); }, [scene, mat]);
   const fit = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene);
@@ -53,7 +51,7 @@ function Model({ scrollRef, variant, fill }) {
   );
 }
 
-export default function HelmetSpin({ className = '', scrollRef, variant = 'gold', fill = 0.62 }) {
+export default function HelmetSpin({ className = '', scrollRef, variant = pickLivery(), fill = 0.62 }) {
   return (
     <Canvas className={className} dpr={[1, 1.5]} camera={{ position: [0, 0, 5], fov: 30 }} gl={{ antialias: true, alpha: true }}>
       <Env url={hdri('studio_small_08_1k--light')} />
