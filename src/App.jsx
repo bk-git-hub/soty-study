@@ -17,6 +17,9 @@ function ScrollReset() {
     window.scrollTo(0, 0);
     // let the new page lay out, then recompute every ScrollTrigger
     const id = requestAnimationFrame(() => ScrollTrigger.refresh());
+    // Positions measured before the fonts swapped in are wrong by the text widths they change (the gallery's
+    // track is as wide as its captions): every trigger below the gallery then sits 88 px late (2026-09-23).
+    document.fonts.ready.then(() => ScrollTrigger.refresh());
     return () => cancelAnimationFrame(id);
   }, [pathname]);
   return null;

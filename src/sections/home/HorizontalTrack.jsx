@@ -37,6 +37,9 @@ export default function HorizontalTrack({ items, from = '#282c20', to = '#f4f4ed
       t.querySelectorAll('.h-img').forEach((img) => {
         gsap.fromTo(img, { x: '-2rem' }, { x: '2rem', ease: 'none', scrollTrigger: { trigger: img.parentElement, containerAnimation: tween, start: 'left right', end: 'right left', scrub: true } });
       });
+      // the track's width, and with it the pin's length and every trigger below, depends on the images:
+      // measure again once they are in (the window's load event does not wait for lazy or late ones)
+      Promise.all([...t.querySelectorAll('img')].map((img) => (img.complete ? Promise.resolve() : new Promise((res) => { img.addEventListener('load', res, { once: true }); img.addEventListener('error', res, { once: true }); })))).then(() => ScrollTrigger.refresh());
       const reveals = [...t.querySelectorAll('.h-caption')].map((cap) => {
         const tl = highlightReveal([cap]);
         ScrollTrigger.create({ trigger: cap, containerAnimation: tween, start: 'left 90%', once: true, onEnter: () => tl.play() });
