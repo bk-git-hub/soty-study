@@ -11,11 +11,11 @@ const [origDir, localDir, outMp4, ffmpeg, workDirArg] = process.argv.slice(2);
 const work = workDirArg || `${outMp4}.frames`;
 const OUT_W = 1920, OUT_H = 1080, PANE_W = 960, PANE_H = 600, PANE_Y = 240, BG = [40, 44, 32];
 const CAPTIONS = {
-  start: '같은 가짜 시계, 같은 입력. 왼쪽 원본 · 오른쪽 우리 (7일차)',
-  paint: '마우스가 지나간 자리에 헬멧이 칠해진다 (유체 마스크)',
+  start: '왼쪽 원본 · 오른쪽 우리. 같은 마우스와 스크롤 입력',
+  paint: '마우스가 지나간 자리에 헬멧이 칠해진다',
   hover: 'NEXT RACE 카드의 헬멧 칸에 마우스를 올리면 마스크가 통째로 켜진다',
   unhover: '마우스를 떼면 커튼이 걷힌다',
-  scroll: '스크롤: 흰 네모가 줄고 사인이 쓰인다 → REDEFINING 문장의 하이라이트 리빌 → 갤러리 · ON/OFF TRACK의 얼린 등고선',
+  scroll: '스크롤: 흰 네모가 줄고 사인이 쓰인다 → REDEFINING 문장의 하이라이트 리빌 → 갤러리 · ON / OFF TRACK',
 };
 const tour = JSON.parse(readFileSync(`${origDir}/tour.json`, 'utf8'));
 const chapterAt = (t) => { let c = tour.chapters[0][1]; for (const [at, name] of tour.chapters) if (t >= at) c = name; return c; };
