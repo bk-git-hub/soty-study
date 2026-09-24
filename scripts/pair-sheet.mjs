@@ -1,10 +1,14 @@
 // Pairs of stills side by side, one pair per row (the original left, ours right), optionally cropped and
 // scaled: the side-by-side check the project rules ask for after every change, as one image.
-// Usage: node scripts/pair-sheet.mjs <out.png> <scale> <crop: x0,y0,x1,y1 or -> <leftA> <rightA> [<leftB> <rightB> ...]
+// Usage: node scripts/pair-sheet.mjs <out.png> <scale> <crop: x0,y0,x1,y1 or -> <leftA> <rightA> [<leftB> <rightB> ...] [--gap r,g,b]
+// The gap between panes is magenta by default (a check image); pass --gap 9,9,10 for a dark sheet meant to be shown.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
-const [out, scaleS, cropS, ...files] = process.argv.slice(2);
-const scale = +scaleS || 1, GAP = 6, BG = [255, 0, 255];
+const argv = process.argv.slice(2);
+const gapAt = argv.indexOf('--gap');
+const BG = gapAt >= 0 ? argv.splice(gapAt, 2)[1].split(',').map(Number) : [255, 0, 255];
+const [out, scaleS, cropS, ...files] = argv;
+const scale = +scaleS || 1, GAP = 6;
 const crop = cropS === '-' ? null : cropS.split(',').map(Number);
 const load = (f) => PNG.sync.read(readFileSync(f));
 const region = (img) => crop ? { x0: crop[0], y0: crop[1], w: crop[2] - crop[0], h: crop[3] - crop[1] } : { x0: 0, y0: 0, w: img.width, h: img.height };
