@@ -2,21 +2,25 @@
 // ours right, a label over each pane and a caption for the current chapter below. Labels and captions are
 // rendered once per chapter through a browser page (no text rasteriser in Node); the frames are scaled
 // 1440x900 -> 960x600 with a bilinear filter and blitted under the overlay.
-// Usage: node scripts/tour-compose.mjs <origDir> <localDir> <out.mp4> <ffmpegPath> [workDir]
+// Usage: node scripts/tour-compose.mjs <origDir> <localDir> <out.mp4> <ffmpegPath> [workDir] [config.json]
+// config.json (optional): { "labels": [leftHtml, rightHtml], "captions": { chapter: text }, "footer": text } overrides the defaults below.
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { PNG } from 'pngjs';
-const [origDir, localDir, outMp4, ffmpeg, workDirArg] = process.argv.slice(2);
+const [origDir, localDir, outMp4, ffmpeg, workDirArg, configPath] = process.argv.slice(2);
+const cfg = configPath ? JSON.parse(readFileSync(configPath, 'utf8')) : {};
 const work = workDirArg || `${outMp4}.frames`;
 const OUT_W = 1920, OUT_H = 1080, PANE_W = 960, PANE_H = 600, PANE_Y = 240, BG = [40, 44, 32];
-const CAPTIONS = {
+const CAPTIONS = cfg.captions ?? {
   start: '왼쪽 원본 · 오른쪽 우리. 같은 마우스와 스크롤 입력',
   paint: '마우스가 지나간 자리에 헬멧이 칠해진다',
   hover: 'NEXT RACE 카드의 헬멧 칸에 마우스를 올리면 마스크가 통째로 켜진다',
   unhover: '마우스를 떼면 커튼이 걷힌다',
   scroll: '스크롤: 흰 네모가 줄고 사인이 쓰인다 → REDEFINING 문장의 하이라이트 리빌 → 갤러리 · ON / OFF TRACK',
 };
+const LABELS = cfg.labels ?? ['landonorris.com <span style="opacity:.6;font-weight:400">(원본, OFF+BRAND)</span>', 'soty-study <span style="opacity:.6;font-weight:400">(따라 만든 것)</span>'];
+const FOOTER = cfg.footer ?? 'github.com/bk-git-hub/soty-study · 관찰로 재현하는 학습 프로젝트, 원본과 무관';
 const tour = JSON.parse(readFileSync(`${origDir}/tour.json`, 'utf8'));
 const chapterAt = (t) => { let c = tour.chapters[0][1]; for (const [at, name] of tour.chapters) if (t >= at) c = name; return c; };
 
@@ -27,10 +31,10 @@ const page = await (await b.newContext({ viewport: { width: OUT_W, height: OUT_H
 const overlays = {};
 for (const name of Object.keys(CAPTIONS)) {
   await page.setContent(`<html><body style="margin:0;width:${OUT_W}px;height:${OUT_H}px;background:transparent;font-family:'Segoe UI',Arial,sans-serif;color:#f4f4ed">
-    <div style="position:absolute;left:0;top:150px;width:960px;text-align:center;font-size:30px;font-weight:600;letter-spacing:.02em">landonorris.com <span style="opacity:.6;font-weight:400">(원본, OFF+BRAND)</span></div>
-    <div style="position:absolute;left:960px;top:150px;width:960px;text-align:center;font-size:30px;font-weight:600;letter-spacing:.02em">soty-study <span style="opacity:.6;font-weight:400">(따라 만든 것)</span></div>
+    <div style="position:absolute;left:0;top:150px;width:960px;text-align:center;font-size:30px;font-weight:600;letter-spacing:.02em">${LABELS[0]}</div>
+    <div style="position:absolute;left:960px;top:150px;width:960px;text-align:center;font-size:30px;font-weight:600;letter-spacing:.02em">${LABELS[1]}</div>
     <div style="position:absolute;left:0;top:890px;width:1920px;text-align:center;font-size:34px;line-height:1.3;padding:0 120px;box-sizing:border-box">${CAPTIONS[name]}</div>
-    <div style="position:absolute;left:0;top:1020px;width:1920px;text-align:center;font-size:20px;opacity:.55">github.com/bk-git-hub/soty-study · 관찰로 재현하는 학습 프로젝트, 원본과 무관</div>
+    <div style="position:absolute;left:0;top:1020px;width:1920px;text-align:center;font-size:20px;opacity:.55">${FOOTER}</div>
   </body></html>`);
   overlays[name] = PNG.sync.read(await page.screenshot({ omitBackground: true }));
 }
