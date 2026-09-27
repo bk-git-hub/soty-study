@@ -79,7 +79,7 @@ export default function Footer({ theme = 'white' }) {
             </div>
           </div>
           <div className="absolute inset-x-0 bottom-0 flex justify-between t-small-label text-dark-green-tint-2 px-2 pb-1 max-[991px]:relative max-[991px]:mt-8 max-[991px]:flex-row-reverse max-[991px]:justify-center max-[991px]:gap-[var(--gap)]">
-            <div className="flex gap-[var(--gap)]"><span><b className="font-semibold">© 2026 {ID.full}.</b> All rights reserved</span></div>
+            <div className="flex gap-[var(--gap)]"><span><b className="font-semibold">© 2026 {ID.full}.</b> A fictional driver: a motion study. Helmet 3D mesh by OFF+BRAND (landonorris.com), used with credit.</span></div>
             <div className="flex gap-[var(--gap)] t-btn">
               <Link to="/legal/privacy-policy"><TextHover>Privacy Policy</TextHover></Link>
               <Link to="/legal/terms-conditions"><TextHover>Terms</TextHover></Link>
