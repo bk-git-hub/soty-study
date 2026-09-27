@@ -6,10 +6,11 @@ import HeroHead from '../../gl/HeroHead';
 import TrackMini from '../../gl/TrackMini';
 import { SIGN_FROM, SIGN_TO, TARGET_REM, power1InOut } from '../../gl/scrollOut';
 import HeroTouchLock from '../../components/HeroTouchLock';
-import ScrollSignature from '../../components/ScrollSignature';
+import SignatureStroke from '../../components/SignatureStroke';
 import Marquee from '../../components/Marquee';
 import RiveCanvas from '../../components/RiveCanvas';
 import Eyebrow from '../../components/Eyebrow';
+import { ID } from '../../data/identity';
 
 /**
  * Home hero. Sticky for one screen of scrolling, during which the light page (a WebGL viewport, see
@@ -95,7 +96,7 @@ export default function Hero({ ready, onHeroReady }) {
               <span className="t-impact-lg-serif whitespace-nowrap text-lime-off pr-[0.27em]">WE DID IT AT HOME</span>
             </Marquee>
             <Marquee className="hero-line hero-line-sans" speed={marqueeSpeed} direction="right">
-              <span className="t-impact-lg whitespace-nowrap text-[#dde1d2] pr-[0.27em]">A British GP weekend I will remember forever</span>
+              <span className="t-impact-lg whitespace-nowrap text-[#dde1d2] pr-[0.27em]">A home race weekend I will never forget</span>
             </Marquee>
           </div>
 
@@ -103,15 +104,15 @@ export default function Hero({ ready, onHeroReady }) {
           <div className="absolute inset-0 z-10">
             <HeroHead onReady={onHeroReady} progressRef={progress} helmetHover={helmetHover} />
           </div>
-          <h1 className="sr-only">Lando Norris</h1>
-          <h2 className="sr-only">2025 McLaren Formula 1 Driver</h2>
+          <h1 className="sr-only">{ID.full}</h1>
+          <h2 className="sr-only">{`2025 ${ID.team} ${ID.series} Driver`}</h2>
 
           {/* 3: signature and section label */}
-          <ScrollSignature ref={sign} className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 max-w-none pointer-events-none hero-sign" />
+          <SignatureStroke ref={sign} mode="scroll" className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 max-w-none pointer-events-none hero-sign" />
           <div ref={label} className="absolute inset-x-0 z-20 flex flex-col items-center gap-[var(--gap)] text-center text-white opacity-0 pointer-events-none"
                style={{ bottom: `calc(50% + ${TARGET_REM[1] / 2}rem + ${LABEL_GAP_REM}rem)` }}>
             <img src={cdn('ln4-LN-logo-svg.svg')} alt="" className="w-[2.4rem] h-[2.4rem]" />
-            <Eyebrow>Message from lando</Eyebrow>
+            <Eyebrow>{`Message from ${ID.first.toLowerCase()}`}</Eyebrow>
           </div>
 
           {/* next race card */}
@@ -138,7 +139,7 @@ export default function Hero({ ready, onHeroReady }) {
             <div className="mx-[.75rem] h-px bg-current" />
             <div className="relative h-[6.9rem]" onPointerEnter={() => { helmetHover.current = true; }} onPointerLeave={() => { helmetHover.current = false; }}>
               <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_play" className="absolute left-1/2 -translate-x-1/2 top-[0.95rem] w-[5.4rem] h-[2.95rem]" />
-              <div className="absolute inset-x-[0.6rem] bottom-[0.95rem] flex justify-center"><Eyebrow className="text-center">mclaren f1<br />since 2019</Eyebrow></div>
+              <div className="absolute inset-x-[0.6rem] bottom-[0.95rem] flex justify-center"><Eyebrow className="text-center">{`${ID.team} ${ID.series}`.toLowerCase()}<br />since 2019</Eyebrow></div>
             </div>
           </div>
 
@@ -147,8 +148,8 @@ export default function Hero({ ready, onHeroReady }) {
 
           {/* mobile title */}
           <div ref={title} className="hidden max-[991px]:flex absolute inset-x-0 top-[7rem] z-20 flex-col items-center gap-3 pointer-events-none">
-            <img src={cdn('ln4-lando-norris-text-mobile.svg')} alt="Lando Norris" className="w-[60vw]" />
-            <Eyebrow>mclaren f1 since 2019</Eyebrow>
+            <img src={cdn('ln4-lando-norris-text-mobile.svg')} alt={ID.full} className="w-[60vw]" />
+            <Eyebrow>{`${ID.team} ${ID.series} since 2019`.toLowerCase()}</Eyebrow>
           </div>
         </section>
       </div>

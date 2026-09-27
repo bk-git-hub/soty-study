@@ -5,6 +5,7 @@ import { cdn } from '../lib/assets';
 import { ON_TRACK as D } from '../data/onTrack';
 import HelmetSpin from '../gl/HelmetSpin';
 import RiveCanvas from '../components/RiveCanvas';
+import SignatureStroke from '../components/SignatureStroke';
 import Eyebrow from '../components/Eyebrow';
 import Button from '../components/Button';
 import ResultsTable from '../components/ResultsTable';
@@ -17,6 +18,7 @@ import { HelmetGrid } from '../sections/home/Helmets';
 import SocialsCallout from '../sections/home/SocialsCallout';
 import Callout from '../sections/home/Callout';
 import Contours from '../sections/shared/Contours';
+import { ID } from '../data/identity';
 
 function Hero() {
   const ref = useRef(null);
@@ -41,9 +43,9 @@ function Hero() {
         </div>
         <div className="grid-main mt-[-1rem]">
           <div className="col-start-2 col-span-3 flex justify-between text-grey-on-track">
-            <div className="t-stat-reg max-[991px]:hidden">last lap lando</div>
-            <div className="t-stat-reg">26 y.o</div>
-            <div className="flex items-center gap-3 t-stat-reg">Bristol, UK <img src={cdn('ln4-flag-UK.svg')} alt="" className="w-[1.6rem] h-[1.1rem] object-cover rounded-[2px]" /></div>
+            <div className="t-stat-reg max-[991px]:hidden">last lap {ID.first.toLowerCase()}</div>
+            <div className="t-stat-reg">{ID.age} y.o</div>
+            <div className="flex items-center gap-3 t-stat-reg">{ID.hometown} <img src={cdn('ln4-flag-UK.svg')} alt="" className="w-[1.6rem] h-[1.1rem] object-cover rounded-[2px]" /></div>
           </div>
         </div>
         <div className="grid-main mt-[6rem]">
@@ -70,13 +72,13 @@ function Hero() {
                 <div className="flex items-center gap-3"><img src={cdn(D.next.flag)} alt="" className="w-[2rem] h-[1.4rem] object-cover rounded-[2px]" /><Eyebrow>{D.next.name}</Eyebrow></div>
                 <div className="flex items-center gap-3">
                   <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_play" inputs={{ 'color_grey-on-track': true }} className="w-[4rem] h-[2rem]" />
-                  <Eyebrow>mclaren f1 since 2019</Eyebrow>
+                  <Eyebrow>{`${ID.team} ${ID.series} since 2019`.toLowerCase()}</Eyebrow>
                 </div>
               </div>
               <div className="relative w-[12rem] rounded-[1rem] border border-white/20 p-[var(--gap)] flex flex-col justify-between">
                 <RiveCanvas file="circuits" artboard="circuits" stateMachine="circuits" className="w-[5rem] h-[4rem]" />
                 <div className="flex flex-col gap-1"><Eyebrow>{D.next.country}</Eyebrow><div className="flex gap-1"><Eyebrow>{D.next.dates}</Eyebrow><Eyebrow>{D.next.month}</Eyebrow></div></div>
-                <RiveCanvas file="signature" artboard="signature" stateMachine="signature_play" inputs={{ 'color_grey-on-track': true }} className="w-[6rem] h-[3rem] self-end" />
+                <SignatureStroke color="grey-on-track" className="w-[6rem] h-[3rem] self-end" />
               </div>
             </div>
           </div>
@@ -113,7 +115,7 @@ function Career() {
     <section className="container">
       <div className="grid-main">
         <div className="col-span-2 flex flex-col gap-[var(--gap)]">
-          <h2 className="t-title-lg max-w-[25rem]">f1 career<br /><span className="t-title-lg-serif text-grey-on-track">since 2019</span></h2>
+          <h2 className="t-title-lg max-w-[25rem]">{ID.series.toLowerCase()} career<br /><span className="t-title-lg-serif text-grey-on-track">since 2019</span></h2>
           <img src={cdn(D.carImage)} alt="" className="w-full aspect-[4/3] object-cover rounded-[.75rem]" />
         </div>
         <div className="col-span-2 grid grid-cols-2 gap-[calc(var(--gap)*2)]">
@@ -124,7 +126,7 @@ function Career() {
             </div>
           ))}
           <div className="col-span-2 flex flex-col gap-3">
-            <h3 className="t-descriptor">F1 Seasons</h3>
+            <h3 className="t-descriptor">{ID.series} Seasons</h3>
             <div className="grid grid-cols-3 text-grey-on-track"><Eyebrow>Year</Eyebrow><Eyebrow>Finish</Eyebrow><Eyebrow>Podiums</Eyebrow></div>
             {D.seasons.map(([y, pos, suf, pod]) => (
               <div key={y} className="grid grid-cols-3 border-t border-white/15 py-2 items-baseline">
@@ -146,7 +148,7 @@ function Highlights() {
     <section className="container">
       <div className="h-[14rem]" />
       <div className="grid-main">
-        <div className="col-span-2"><h2 className="t-title-lg flex flex-col"><span>f1 result</span><span className="t-title-lg-serif text-grey-on-track">highlights</span></h2></div>
+        <div className="col-span-2"><h2 className="t-title-lg flex flex-col"><span>{ID.series.toLowerCase()} result</span><span className="t-title-lg-serif text-grey-on-track">highlights</span></h2></div>
         <div className="col-span-2 text-grey-on-track"><p className="t-body-reg max-w-[26rem]">{D.highlightsIntro}</p></div>
       </div>
       <div className="h-[8.75rem]" />
@@ -186,7 +188,7 @@ export default function OnTrack() {
   return (
     <div className="bg-black text-white">
       <Hero />
-      <Impact parts={D.impact} eyebrow="mclaren f1 since 2019" />
+      <Impact parts={D.impact} eyebrow={`${ID.team} ${ID.series} since 2019`.toLowerCase()} />
       <Podiums />
       <Career />
       <Highlights />
@@ -200,13 +202,13 @@ export default function OnTrack() {
       <section className="container pt-[calc(var(--gap)*2)] pb-[var(--gap)]">
         <div className="grid-main">
           <div className="col-span-2 flex flex-col"><h2 className="t-title-lg">Helmets</h2><h2 className="t-title-lg"><span className="t-title-lg-serif text-lime-off">Hall of Fame</span></h2></div>
-          <div className="col-span-2 text-grey-on-track"><p className="t-body-reg max-w-[26rem]">From his iconic blobs to innovative one-off designs, Lando has always been passionate about designing innovative and memorable helmets.</p></div>
+          <div className="col-span-2 text-grey-on-track"><p className="t-body-reg max-w-[26rem]">From bold contour lines to one-off specials, {ID.first} treats every helmet as a canvas worth remembering.</p></div>
         </div>
         <div className="h-[8.75rem]" />
         <HelmetGrid />
       </section>
       <SocialsCallout cards={D.socialCards} theme="dark" />
-      <Callout text="Explore the exclusive collection of 1:2 and 1:5 scale replicas" cta="buy minis" to="https://store.landonorris.com" />
+      <Callout text="Explore the exclusive collection of 1:2 and 1:5 scale replicas" cta="buy minis" to="#" />
       <Footer theme="black" />
     </div>
   );

@@ -5,6 +5,7 @@ import { cdn } from '../lib/assets';
 import { OFF_TRACK as D } from '../data/offTrack';
 import { PARTNER_LOGOS } from '../data/site';
 import RiveCanvas from '../components/RiveCanvas';
+import SignatureStroke from '../components/SignatureStroke';
 import Eyebrow from '../components/Eyebrow';
 import Marquee from '../components/Marquee';
 import Footer from '../components/Footer';
@@ -12,6 +13,7 @@ import Impact from '../sections/home/Impact';
 import HorizontalTrack from '../sections/home/HorizontalTrack';
 import SocialsCallout from '../sections/home/SocialsCallout';
 import Contours from '../sections/shared/Contours';
+import { ID } from '../data/identity';
 
 /**
  * Off Track hero: cream page, "OFF TRACK" title (OFF in Mona with a gap, TRACK cut by the right
@@ -32,15 +34,15 @@ function Hero() {
       <section className="container relative pt-[6rem]" style={{ minHeight: 'calc(var(--vh) * 100)' }}>
         <h1 className="t-hero-heading leading-none whitespace-nowrap"><span className="mr-[6rem]">OFF</span>TRACK</h1>
         <div className="grid-main -mt-[1rem]">
-          <div className="t-quote">Lando Norris</div>
-          <div className="t-quote">26 y.o</div>
+          <div className="t-quote">{ID.full}</div>
+          <div className="t-quote">{ID.age} y.o</div>
           <div className="w-[3rem] h-[3rem]"><RiveCanvas file="reef" artboard="off-icons" stateMachine="off-icons" inputs={{ 'color_green-off-white-2': true }} className="w-full h-full" /></div>
         </div>
         <div className="grid-main mt-[6rem]">
           <div className="col-span-2 flex flex-col gap-[var(--gap)]">
             <Eyebrow className="text-grey-on-track">bringing the fight</Eyebrow>
             <h2 className="t-body-lg">{D.heroPara[0]}<span className="t-body-lg-serif text-green-off-white-2">{D.heroPara[1]}</span>{D.heroPara[2]}</h2>
-            <div className="w-[10rem] h-[5rem]"><RiveCanvas file="signature" artboard="signature" stateMachine="signature_play" inputs={{ 'color_dark-green-tint-2': true }} className="w-full h-full" /></div>
+            <div className="w-[10rem] h-[5rem]"><SignatureStroke color="dark-green-tint-2" className="w-full h-full" /></div>
           </div>
           <div className="col-start-3 col-span-2 relative">
             <img src={cdn(D.heroImage)} alt="" className="absolute -top-[26rem] right-[-8rem] w-[38rem] h-[24rem] object-cover" />

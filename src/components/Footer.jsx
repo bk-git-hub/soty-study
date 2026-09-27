@@ -3,8 +3,10 @@ import { cdn } from '../lib/assets';
 import { PAGES, SOCIALS, FOOTER_LOGOS } from '../data/site';
 import Button from './Button';
 import RiveCanvas from './RiveCanvas';
+import SignatureStroke from './SignatureStroke';
 import TextHover from './TextHover';
 import Marquee from './Marquee';
+import { ID } from '../data/identity';
 
 /**
  * Footer: a dark-green card masked into a "visor" shape (mask-image SVG), page + social links,
@@ -27,7 +29,7 @@ export default function Footer({ theme = 'white' }) {
               <div className="absolute inset-x-0 top-[12rem] flex justify-center text-center">
                 <div className="relative flex flex-col items-center w-[48rem] mx-auto">
                   <div className="absolute -top-[6.8rem] w-[13.0625rem] h-[8.5rem] z-[5]">
-                    <RiveCanvas file="signature" artboard="signature" stateMachine="signature_play" inputs={{ color_lime: true }} className="w-full h-full" />
+                    <SignatureStroke color="lime" className="w-full h-full" />
                   </div>
                   <h2 className="t-impact-sm">
                     Always <span className="t-impact-sm-serif text-lime-off">bringing</span> the <span className="t-impact-sm-serif text-lime-off">fight</span>.
@@ -43,7 +45,7 @@ export default function Footer({ theme = 'white' }) {
                       <Link key={to} to={to} className={`t-btn footer ${pathname === to ? 'text-green-off-white-2' : ''}`}><TextHover>{label}</TextHover></Link>
                     ))}
                   </div>
-                  <a href="https://store.landonorris.com" target="_blank" rel="noreferrer" className="t-btn nav text-lime"><TextHover>Store</TextHover></a>
+                  <a href="#" target="_blank" rel="noreferrer" className="t-btn nav text-lime"><TextHover>Store</TextHover></a>
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="t-eyebrow text-green-off-white-2">Follow On</span>
@@ -60,7 +62,7 @@ export default function Footer({ theme = 'white' }) {
                 <div className="relative flex justify-center items-end">
                   <img src={cdn('ln-360-helm-1.webp')} alt="" className="w-[48.75rem] h-[39.875rem] relative -bottom-[3rem] object-contain flex-none" />
                   <div className="absolute bottom-[1.75rem] pointer-events-auto">
-                    <Button to="mailto:business@landonorris.com" external>business enquiries</Button>
+                    <Button to="mailto:hello@example.com" external>business enquiries</Button>
                   </div>
                 </div>
               </div>
@@ -76,7 +78,7 @@ export default function Footer({ theme = 'white' }) {
             </div>
           </div>
           <div className="absolute inset-x-0 bottom-0 flex justify-between t-small-label text-dark-green-tint-2 px-2 pb-1 max-[991px]:relative max-[991px]:mt-8 max-[991px]:flex-row-reverse max-[991px]:justify-center max-[991px]:gap-[var(--gap)]">
-            <div className="flex gap-[var(--gap)]"><span><b className="font-semibold">© 2026 Lando Norris.</b> All rights reserved</span></div>
+            <div className="flex gap-[var(--gap)]"><span><b className="font-semibold">© 2026 {ID.full}.</b> All rights reserved</span></div>
             <div className="flex gap-[var(--gap)] t-btn">
               <Link to="/legal/privacy-policy"><TextHover>Privacy Policy</TextHover></Link>
               <Link to="/legal/terms-conditions"><TextHover>Terms</TextHover></Link>

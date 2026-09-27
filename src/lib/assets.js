@@ -1,5 +1,6 @@
 // Resolves asset names to local paths.
 import CHARACTERS from '../data/characters';
+import REPLACEMENTS from '../data/replacements';
 
 // Local dev uses the original site's media, downloaded into public/orig/ (gitignored, never committed).
 // The public build will swap these for self-made / licensed assets in public/assets/.
@@ -15,6 +16,8 @@ const RUNTIME = '/orig/runtime/';
 
 /** cdn('ln-home-horiz-1.webp') -> '/orig/cdn/68302baa04b14a1ca33c0b25_ln-home-horiz-1.webp' */
 export function cdn(name) {
+  // logos, signature and merch of the fictional driver (scripts/make-identity.mjs)
+  if (REPLACEMENTS[name]) return REPLACEMENTS[name];
   // photos of a person are replaced by the placeholder character drawn for that photo (same size)
   if (CHARACTERS.has(name)) return '/assets/characters/' + encodeURIComponent(name.replace(/\.(jpg|webp)$/, '.webp'));
   const hit = index[name];
