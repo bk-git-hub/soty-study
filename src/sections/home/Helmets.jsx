@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { ScrollTrigger } from '../../lib/gsap';
 import { useNavTheme } from '../../lib/navTheme';
 import { cdn } from '../../lib/assets';
 import { HELMETS } from '../../data/helmets';
@@ -9,12 +10,30 @@ import Eyebrow from '../../components/Eyebrow';
  * Each card: outline frame SVG (grey; lime overlay fades in on hover), base helmet image
  * (scales 1.1 on hover) and a reveal image wiped in with clip-path ellipse from the top,
  * plus a name / year label bottom-right. Card shape is a mask-image on the item.
+ *
+ * Stagger (home page): the columns start in a zigzag, 1st and 3rd raised, 2nd and 4th lowered, and
+ * straighten as the page scrolls: fully level by the time the last row leaves the top of the screen.
+ * One number drives it: --stagger on the grid, 1 = full zigzag, 0 = level, written by a scrubbed
+ * ScrollTrigger from "grid top enters at the bottom" to "grid bottom leaves at the top". Each card
+ * moves by translateY(dir * stagger * AMP%), where % is of the card's own height and dir is -1 for odd
+ * children, +1 for even ones: with 4 columns (or 2 on phones) odd children are always columns 1 and 3.
  */
 const FRAME = 'M8 .5h170.12a7.5 7.5 0 0 1 7.5 7.5v154.61a7.5 7.5 0 0 1-7.5 7.5H60.681a10.5 10.5 0 0 0-8.21 3.954l-7.86 9.858a9.5 9.5 0 0 1-7.427 3.578H8A7.5 7.5 0 0 1 .5 180V8A7.5 7.5 0 0 1 8 .5Z';
 
-export function HelmetGrid() {
+export function HelmetGrid({ stagger = false }) {
+  const grid = useRef(null);
+  useEffect(() => {
+    if (!stagger) return undefined;
+    const el = grid.current;
+    const st = ScrollTrigger.create({
+      trigger: el, start: 'top bottom', end: 'bottom top',
+      onUpdate: (self) => el.style.setProperty('--stagger', (1 - self.progress).toFixed(4)),
+      onRefresh: (self) => el.style.setProperty('--stagger', (1 - self.progress).toFixed(4)),
+    });
+    return () => st.kill();
+  }, [stagger]);
   return (
-    <div className="grid grid-cols-4 gap-[var(--gap)] max-[991px]:grid-cols-2">
+    <div ref={grid} className={`grid grid-cols-4 gap-[var(--gap)] max-[991px]:grid-cols-2${stagger ? ' helmet-stagger' : ''}`}>
       {HELMETS.map((h, i) => (
         <div key={i} className="helmet-card relative group">
           <div className="helmet-item relative w-full flex" style={{ aspectRatio: '406.89 / 411' }}>
@@ -55,7 +74,7 @@ export default function Helmets() {
           </div>
         </div>
         <div className="h-[8.75rem]" />
-        <HelmetGrid />
+        <HelmetGrid stagger />
       </section>
     </div>
   );
