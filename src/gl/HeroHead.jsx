@@ -16,7 +16,7 @@ import { hdri } from '../lib/assets';
  * The hero of the original is one shared WebGL canvas. The visible parts are:
  *  - a portrait plane using diffuse + depth + alpha maps. The depth map displaces the plane's
  *    vertices toward the camera (a relief), so the face reads as 3D under the perspective camera.
- *  - the helmet (our code-built model, gl/toonHelmetModel.js), seen two ways: as blueprint lines that pulse around the head
+ *  - the helmet GLB (the original's mesh, our own surface), seen two ways: as blueprint lines that pulse around the head
  *    (BlueprintLines), and as the real painted helmet, which only shows where the cursor's fluid
  *    trail has "painted" it on (FluidSim -> RevealMask -> HelmetPaint);
  *  - the flowing contour background, painted by the same trail (BackgroundWaves).
