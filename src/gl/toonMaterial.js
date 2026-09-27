@@ -37,7 +37,7 @@ const FRAG = /* glsl */ `
     float light = ndl > 0.45 ? 1.0 : (ndl > 0.0 ? 0.72 : 0.5);
     vec3 col = base * light;
     // hard highlight: the Blinn half vector close enough to the normal -> pure white, else nothing
-    float spec = step(0.994, dot(N, normalize(L + V)));
+    float spec = step(0.997, dot(N, normalize(L + V)));
     // hard rim on the side away from the light
     float rim = step(0.62, 1.0 - max(dot(N, V), 0.0)) * step(ndl, 0.25);
     col = mix(col, vec3(1.0), spec * 0.9);

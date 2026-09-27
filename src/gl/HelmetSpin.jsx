@@ -1,14 +1,13 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, useTexture } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { model, hdri } from '../lib/assets';
+import { hdri } from '../lib/assets';
 import { helmetMaps, pickLivery } from './helmetMaps';
 import { makeToonMaterial, makeOutlineMaterial } from './toonMaterial';
+import { useHelmetScene } from './useHelmetScene';
 import Env from './Env';
 
-// Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
-const DRACO = '/orig/runtime/draco/';
 
 /**
  * Solid gold helmet (helmet-21.glb + PBR maps) that idles slowly.
@@ -16,27 +15,30 @@ const DRACO = '/orig/runtime/draco/';
  * The GLB is measured once (bounding box) and scaled so its height fills `fill` of the viewport.
  */
 function Model({ scrollRef, variant, fill }) {
-  const { scene } = useGLTF(model('helmet-21'), DRACO);
+  const scene = useHelmetScene();
   // our livery has no roughness / metallic maps (the constants below apply as they are); the original's does
   const maps = useMemo(() => helmetMaps(variant), [variant]);
-  const { base, normal, roughness: rough, metallic: metal } = useTexture(maps.own ? { base: maps.base, normal: maps.normal } : { base: maps.base, normal: maps.normal, roughness: maps.roughness, metallic: maps.metallic });
+  // toon: the visor gets its own texture (black glass with the team strip), as in the hero
+  const { base, normal, roughness: rough, metallic: metal, glass } = useTexture(maps.toon ? { base: maps.base, normal: maps.normal, glass: maps.glassBase } : maps.own ? { base: maps.base, normal: maps.normal } : { base: maps.base, normal: maps.normal, roughness: maps.roughness, metallic: maps.metallic });
   base.colorSpace = THREE.SRGBColorSpace;
-  [base, normal, rough, metal].forEach((t) => { if (t) t.flipY = false; });
+  if (glass) glass.colorSpace = THREE.SRGBColorSpace;
+  [base, normal, rough, metal, glass].forEach((t) => { if (t) { t.flipY = false; t.wrapS = t.wrapT = THREE.RepeatWrapping; } });
   // metalness is capped below 1 so the paint still picks up the direct lights even before the
   // HDR environment has loaded (a fully metallic surface with no env map renders black)
+  const glassMat = useMemo(() => (glass ? makeToonMaterial(glass, { visor: true }) : null), [glass]);
   const mat = useMemo(() => maps.toon ? makeToonMaterial(base) : new THREE.MeshStandardMaterial({ map: base, normalMap: normal, roughnessMap: rough || null, metalnessMap: metal || null, metalness: 0.7, roughness: 0.9, envMapIntensity: 1.4 }), [maps, base, normal, rough, metal]);
   useEffect(() => {
     const meshes = [];
     scene.traverse((o) => { if (o.isMesh && !o.userData.hull) meshes.push(o); });
     for (const o of meshes) {
-      o.material = mat;
+      o.material = glassMat && o.name === 'glass' ? glassMat : mat;
       // toon: an inked silhouette as a child hull (added once; the GLB scene is cached across mounts)
       if (maps.toon && !o.userData.hasHull) {
         const hull = new THREE.Mesh(o.geometry, makeOutlineMaterial(0.0009));
         hull.userData.hull = true; o.userData.hasHull = true; o.add(hull);
       }
     }
-  }, [scene, mat, maps]);
+  }, [scene, mat, glassMat, maps]);
   const fit = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene);
     return { size: box.getSize(new THREE.Vector3()), center: box.getCenter(new THREE.Vector3()) };

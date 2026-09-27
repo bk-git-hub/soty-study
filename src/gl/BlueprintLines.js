@@ -82,7 +82,7 @@ export function makeBlueprintMaterial({ color = 0x000000, opacity = 0.1 } = {}) 
 
 export function makeBlueprintLines(mesh, material, keep = null, diagonals = true) {
   const lines = new THREE.LineSegments(makeBlueprintGeometry(mesh.geometry, keep, diagonals), material);
-  lines.name = 'blueprint-' + mesh.name;
+  lines.name = 'blueprint-' + (mesh.userData.part || mesh.name); // parts may share a name
   lines.renderOrder = 1; // after the portrait relief (see makeBlueprintMaterial)
   mesh.getWorldPosition(lines.position);
   lines.quaternion.copy(mesh.getWorldQuaternion(new THREE.Quaternion()));

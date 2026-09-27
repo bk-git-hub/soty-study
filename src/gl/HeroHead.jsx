@@ -1,6 +1,6 @@
 import { Suspense, memo, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, useTexture } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import Env from './Env';
 import BackgroundWaves from './BackgroundWaves';
 import RevealMask from './RevealMask';
@@ -8,22 +8,21 @@ import HelmetPaint from './HelmetPaint';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 import { SCROLL_FILTER_GLSL, TARGET_REM, CAMERA_DOLLY, ALIVE_UNTIL, ALIVE_FADE, power1InOut, rectAt } from './scrollOut';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
+import { useHelmetScene } from './useHelmetScene';
 import * as THREE from 'three';
-import { model, hdri } from '../lib/assets';
+import { hdri } from '../lib/assets';
 
 /*
  * The hero of the original is one shared WebGL canvas. The visible parts are:
  *  - a portrait plane using diffuse + depth + alpha maps. The depth map displaces the plane's
  *    vertices toward the camera (a relief), so the face reads as 3D under the perspective camera.
- *  - a Draco-compressed helmet GLB, seen two ways: as blueprint lines that pulse around the head
+ *  - the helmet (our code-built model, gl/toonHelmetModel.js), seen two ways: as blueprint lines that pulse around the head
  *    (BlueprintLines), and as the real painted helmet, which only shows where the cursor's fluid
  *    trail has "painted" it on (FluidSim -> RevealMask -> HelmetPaint);
  *  - the flowing contour background, painted by the same trail (BackgroundWaves).
  * On scroll the whole scene is drawn into a shrinking viewport (see scrollOut.js and Rig below).
  */
 
-// Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
-const DRACO = '/orig/runtime/draco/';
 // Camera of the original's hero scene (read off its bundle while chasing a silhouette mismatch, see
 // private devlog 2026-09-18): perspective fov 15 at z = 3 on desktop. The world-space viewport height at
 // z = 0 is then 2 * 3 * tan(7.5 deg) = 0.79, and the portrait / helmet sizes below are absolute, not vh-based.
@@ -183,7 +182,7 @@ function Portrait({ pointer, progress, mask, view }) {
 }
 
 function Helmet({ pointer, progress, rig, mask, view }) {
-  const { scene } = useGLTF(model('helmet-21'), DRACO);
+  const scene = useHelmetScene();
   const group = useRef();
   const { size } = useThree();
 

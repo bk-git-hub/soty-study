@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, useTexture } from '@react-three/drei';
+import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { model } from '../lib/assets';
 import { helmetMaps, pickLivery } from './helmetMaps';
 import { makeToonMaterial, makeOutlineMaterial } from './toonMaterial';
+import { useHelmetScene } from './useHelmetScene';
 import { SCROLL_FILTER_GLSL } from './scrollOut';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 
@@ -27,7 +27,6 @@ import { REVEAL_MASK_GLSL } from './FluidSim';
  * The helmet follows the on-screen blueprint exactly because it copies that group's world matrix.
  */
 
-const DRACO = '/orig/runtime/draco/';
 const SHELL_ROUGHNESS = 0.05; // the original's value
 // Liveries: see helmetMaps.js. Ours ('contour') is the default; the original's files stay reachable in
 // dev with ?variant=<folder> for side-by-side comparison. (The original names five variants, a coin flip
@@ -59,7 +58,7 @@ const COMPOSITE_FRAG = /* glsl */ `
 export default function HelmetPaint({ reveal, rig, view }) {
   const { gl, scene: pageScene, camera, size } = useThree();
   const livery = useMemo(pickLivery, []);
-  const { scene: glb } = useGLTF(model('helmet-21'), DRACO);
+  const glb = useHelmetScene();
   const maps = useMemo(() => helmetMaps(livery), [livery]);
   const tex = useTexture({
     base: maps.base,
