@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import SmoothScroll, { getLenis } from './lib/SmoothScroll';
 import { ScrollTrigger } from './lib/gsap';
 import Nav from './components/Nav';
 import Loader from './components/Loader';
 import Home from './pages/Home';
-import OnTrack from './pages/OnTrack';
-import OffTrack from './pages/OffTrack';
-import Calendar from './pages/Calendar';
-import NotFound from './pages/NotFound';
+import { OPTIONAL_PAGES, NotFoundPage } from './lib/pages';
 
 function ScrollReset() {
   const { pathname } = useLocation();
@@ -56,10 +53,9 @@ export default function App() {
         <main>
           <Routes>
             <Route path="/" element={<Home ready={ready} onHeroReady={onHeroReady} />} />
-            <Route path="/on-track" element={<OnTrack />} />
-            <Route path="/off-track" element={<OffTrack />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="*" element={<NotFound />} />
+            {/* the other pages exist only where their files do (see lib/pages.js); unknown paths go home then */}
+            {Object.entries(OPTIONAL_PAGES).map(([path, Page]) => Page && <Route key={path} path={path} element={<Page />} />)}
+            <Route path="*" element={NotFoundPage ? <NotFoundPage /> : <Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

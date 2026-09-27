@@ -7,6 +7,7 @@ import RiveCanvas from './RiveCanvas';
 import TextHover from './TextHover';
 import { SOCIALS } from '../data/site';
 import { ID } from '../data/identity';
+import { hasPage } from '../lib/pages';
 
 const LINKS = [
   { to: '/', label: 'Home' },
@@ -63,7 +64,7 @@ export default function Menu({ open, onClose }) {
           <div />
           <div className="flex flex-col items-center gap-[calc(var(--gap)*2)] w-full">
             <div className="flex flex-col items-center text-green-off-white-1">
-              {LINKS.map((l) => {
+              {LINKS.filter((l) => hasPage(l.to)).map((l) => {
                 const current = pathname === l.to;
                 return (
                   <Link key={l.to} to={l.to} onClick={onClose} className="relative overflow-clip hover:text-lime-off">

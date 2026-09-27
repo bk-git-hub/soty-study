@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cdn } from '../lib/assets';
 import { PAGES, SOCIALS, FOOTER_LOGOS } from '../data/site';
+import { hasPage } from '../lib/pages';
 import Button from './Button';
 import RiveCanvas from './RiveCanvas';
 import SignatureStroke from './SignatureStroke';
@@ -41,7 +42,7 @@ export default function Footer({ theme = 'white' }) {
                 <div className="flex flex-col items-center">
                   <span className="t-eyebrow text-green-off-white-2">pages</span>
                   <div className="flex flex-col items-center gap-[calc(var(--gap)*.2)] mt-4 mb-8">
-                    {PAGES.map(([label, to]) => (
+                    {PAGES.filter(([, to]) => hasPage(to)).map(([label, to]) => (
                       <Link key={to} to={to} className={`t-btn footer ${pathname === to ? 'text-green-off-white-2' : ''}`}><TextHover>{label}</TextHover></Link>
                     ))}
                   </div>

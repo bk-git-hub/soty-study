@@ -6,6 +6,7 @@ export const SOCIALS = [
   ['Twitch', '#'],
 ];
 
+// (lib/pages.js hasPage() filters these to the pages this build has)
 export const PAGES = [
   ['Home', '/'],
   ['On Track', '/on-track'],

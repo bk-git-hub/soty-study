@@ -21,3 +21,20 @@ Thumbs.db
 # Original site assets, local study only (never commit)
 public/orig/
 src/data/orig-index.js
+
+# Pages besides home (On Track, Off Track, Calendar, 404) and the files only they use: kept local for
+# now, only the landing page is published. src/lib/pages.js loads them when present.
+src/pages/OnTrack.jsx
+src/pages/OffTrack.jsx
+src/pages/Calendar.jsx
+src/pages/NotFound.jsx
+src/gl/HelmetSpin.jsx
+src/components/Countdown.jsx
+src/components/CalendarTrack.jsx
+src/components/ResultsTable.jsx
+src/sections/home/SocialsCallout.jsx
+src/sections/home/Callout.jsx
+src/data/calendar.js
+src/data/results.js
+src/data/offTrack.js
+src/data/onTrack.js
