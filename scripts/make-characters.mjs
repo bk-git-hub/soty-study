@@ -545,7 +545,7 @@ const SPECS = [
   ['In-helm-2023-Chrome-hover.webp', 823, 823, { bg: 'studio', c1: '#f2f2ee', outfit: 'suitWhite', pose: 'holdSide', prop: 'helmet', hc: ['#b9c0c8', '#38c7c0'], face: 'grin', flip: true }],
   ['In-helm-2023-Beach Ball-hover.webp', 823, 823, { bg: 'pool', helmet: true, hc: ['#f4f4f0', '#e0343f'], outfit: 'tank', frame: 'close', y: 0.1 }],
   ['In-helm-2022-Basketball-hover.webp', 823, 823, { bg: 'crowd', outfit: 'suit', helmet: true, view: 'side', hc: ['#e2702a', '#1a1a1a'], frame: 'close' }],
-  ['In-helm-2021-hover.webp', 823, 823, { bg: 'pit', outfit: 'suitBlue', helmet: true, pose: 'pointUp', hc: [C.lime, '#2a55d6'] }],
+  ['ln-helm-2021-hover.webp', 823, 823, { bg: 'pit', outfit: 'suitBlue', helmet: true, pose: 'pointUp', hc: [C.lime, '#2a55d6'] }],
   ['In-helm-2020-Silverstone-hover.webp', 823, 823, { bg: 'cockpit', c1: '#e0741f', c2: '#b95a14', helmet: true, hc: ['#f4f4f0', '#2bb6b0'], frame: 'close', y: 0.08 }],
   ['In-helm-2019-hover.webp', 822, 823, { bg: 'pit', outfit: 'suitBlue', helmet: true, hc: ['#2a55d6', C.lime], frame: 'half' }],
   // the large helmet photo on the home page, the footer helmet, the side helmet shot, the photo tee
@@ -580,6 +580,7 @@ const SPECS = [
   ['ln-f1-car-img-2.webp', 815, 915, { bg: 'podium', c1: '#e9ecef', outfit: 'suitWhite', hat: 'cap', pose: 'armsUp', frame: 'full', face: 'shout' }],
   ['ln-on-t-horiz-2.webp', 655, 657, { scene: 'carFront', bg: 'wet', spray: true, k: 0.95 }],
   ['ln4-menu-img-5.webp', 736, 900, { scene: 'carFront', bg: 'wet', spray: true, k: 0.95 }],
+  ['ln4-on-track-scroll-img2.webp', 856, 857, { scene: 'carFront', bg: 'wet', spray: true, k: 1.1, x: -0.1 }],
   // helmets hall of fame: the product shot of each helmet, on transparent ground like the originals
   ['In-helm-2025-Season-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: [C.dark, C.lime] }],
   ['In-helm-2025-Discoball-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hv: 'disco' }],
