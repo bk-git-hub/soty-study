@@ -1,9 +1,9 @@
 // Shared site-wide data (links, socials, partner logos).
 export const SOCIALS = [
-  ['Tiktok', 'https://www.tiktok.com/@landonorris'],
-  ['Instagram', 'https://www.instagram.com/landonorris'],
-  ['Youtube', 'https://www.youtube.com/@landonorris'],
-  ['Twitch', 'https://www.twitch.tv/landonorris'],
+  ['Tiktok', '#'],
+  ['Instagram', '#'],
+  ['Youtube', '#'],
+  ['Twitch', '#'],
 ];
 
 export const PAGES = [

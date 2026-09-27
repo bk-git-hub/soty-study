@@ -4,6 +4,7 @@ import { ROUNDS } from '../data/calendar';
 import Button from './Button';
 import RiveCanvas from './RiveCanvas';
 import Eyebrow from './Eyebrow';
+import { ID } from '../data/identity';
 
 /**
  * Track visualiser: one round at a time inside a "visor" frame. Left column = when / length /
@@ -45,7 +46,7 @@ export default function CalendarTrack({ start = 0 }) {
           </div>
           <div className="flex flex-col gap-[calc(var(--gap)*2)] w-[22rem]">
             <div className="flex flex-col gap-2">
-              <div className="flex gap-1 text-grey-on-track"><Eyebrow>lando at</Eyebrow><Eyebrow>{r.circuit}</Eyebrow></div>
+              <div className="flex gap-1 text-grey-on-track"><Eyebrow>{ID.first.toLowerCase()} at</Eyebrow><Eyebrow>{r.circuit}</Eyebrow></div>
               <p className="t-body-sm text-green-off-white-1">{r.about}</p>
             </div>
             <div className="flex flex-col gap-2">

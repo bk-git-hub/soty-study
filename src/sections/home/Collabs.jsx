@@ -9,6 +9,7 @@ import Marquee from '../../components/Marquee';
  * "Collabs" Rive word (phrases.riv / collabs artboard) drawn diagonally behind the title.
  */
 import RiveCanvas from '../../components/RiveCanvas';
+import { ID } from '../../data/identity';
 
 export default function Collabs() {
   const ref = useRef(null);
@@ -23,7 +24,7 @@ export default function Collabs() {
             <h2 className="t-title-lg"><span className="t-title-lg-serif">&amp;campaigns</span></h2>
           </div>
           <div className="col-span-2 flex gap-[calc(var(--gap)*2)]">
-            <p className="t-body-reg max-w-[25rem]">Lando is proud to collaborate with a range of partners, who share his passion for performance across a range of industries.</p>
+            <p className="t-body-reg max-w-[25rem]">{ID.first} is proud to team up with partners who share a drive for performance, on track and far beyond it.</p>
           </div>
         </div>
         <div className="h-[8rem]" />

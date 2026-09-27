@@ -3,6 +3,7 @@ import { ScrollTrigger, SplitText } from '../../lib/gsap';
 import { highlightReveal } from '../../lib/highlight';
 import RiveCanvas from '../../components/RiveCanvas';
 import Eyebrow from '../../components/Eyebrow';
+import { ID } from '../../data/identity';
 
 const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -18,7 +19,7 @@ const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt
  * component re-renders when the hero reports ready. With a fresh literal each render the split lines
  * (and any reveal on them) were wiped a few seconds after load, silently. Since day 0 (found 2026-09-22).
  */
-export default function Impact({ parts, eyebrow = 'mclaren f1 since 2019', icon = true, className = '' }) {
+export default function Impact({ parts, eyebrow = `${ID.team} ${ID.series} since 2019`.toLowerCase(), icon = true, className = '' }) {
   const ref = useRef(null);
   const html = useMemo(() => parts.map((p) => (Array.isArray(p) ? `<strong class="text-lime-off">${escapeHtml(p[0])}</strong>` : escapeHtml(p))).join(''), [parts]);
   const inner = useMemo(() => ({ __html: html }), [html]);

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cdn } from '../lib/assets';
 import Menu from './Menu';
 import TextHover from './TextHover';
+import { ID } from '../data/identity';
 
 /**
  * Fixed nav: brand (top-left), LN mark (center), STORE + hamburger (top-right).
@@ -27,17 +28,17 @@ export default function Nav() {
     <>
       <div className="nav fixed inset-x-0 top-0 z-[120] pointer-events-none">
         <div className="flex items-center justify-between p-[var(--gap)] relative">
-          <Link to="/" className="pointer-events-auto max-[991px]:hidden nav-brand" aria-label="Lando Norris home">
+          <Link to="/" className="pointer-events-auto max-[991px]:hidden nav-brand" aria-label={`${ID.full} home`}>
             <span className="nav-brand-text flex flex-col leading-none text-dark-green">
-              <span className="serif text-[1.55rem] tracking-[-.02em]">LANDO</span>
-              <span className="text-[1.5rem] -mt-[.15rem]" style={{ fontVariationSettings: '"wght" 800, "wdth" 92' }}>NORRIS</span>
+              <span className="serif text-[1.55rem] tracking-[-.02em]">{ID.first.toUpperCase()}</span>
+              <span className="text-[1.5rem] -mt-[.15rem]" style={{ fontVariationSettings: '"wght" 800, "wdth" 92' }}>{ID.last.toUpperCase()}</span>
             </span>
           </Link>
           <Link to="/" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto nav-mark" aria-label="Home">
             <img src={cdn('ln4-LN-logo-svg.svg')} alt="" className="w-[2.75rem] h-[2.75rem] nav-mark-img" />
           </Link>
           <div className="flex items-center gap-[var(--gap)] pointer-events-auto ml-auto">
-            <a href="https://store.landonorris.com" target="_blank" rel="noreferrer"
+            <a href="#" target="_blank" rel="noreferrer"
                className="bg-lime text-dark-green h-[3.75rem] px-4 rounded-[.54rem] inline-flex items-center gap-2 t-btn nav">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                 <path d="M6 8h12l1 13H5L6 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" />

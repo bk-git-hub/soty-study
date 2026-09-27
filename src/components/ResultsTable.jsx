@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { cdn } from '../lib/assets';
 import Eyebrow from './Eyebrow';
+import { ID } from '../data/identity';
 
 /**
  * Results list (on-track highlights + calendar). Rows: series | name+flag | date | finish+trophy | time.
@@ -25,7 +26,7 @@ export default function ResultsTable({ rows, columns = ['series', 'Name', 'When'
           <div key={i} className={`group grid ${cols} gap-[var(--gap)] items-center py-[1.2rem] border-t border-white/15 relative`}
                onMouseEnter={() => { if (hover.current) { hover.current.src = cdn(r.img); hover.current.style.opacity = 1; } }}
                onMouseLeave={() => { if (hover.current) hover.current.style.opacity = 0; }}>
-            <div className="t-stat-major">{showRound ? r.round : 'F1'}</div>
+            <div className="t-stat-major">{showRound ? r.round : ID.series}</div>
             <div className="flex items-center gap-3">
               <div className="t-stat-major">{r.name}</div>
               {r.flag && <img src={cdn(r.flag)} alt="" className="w-[1.6rem] h-[1.1rem] object-cover rounded-[2px]" />}

@@ -13,7 +13,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.124",
   "laps": "58",
-  "about": "At the Albert Park circuit, Lando opened his 2025 season in style with a win from pole despite changing conditions.",
+  "about": "At the Albert Park circuit, Juno opened his 2025 season in style with a win from pole despite changing conditions.",
   "result": "5th",
   "past": true,
   "schedule": [
@@ -67,7 +67,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "305.256",
   "laps": "56",
-  "about": "Having first raced in Shanghai for F1's 1000th race in 2019, Lando has scored consistently in China since, including 2nd in 2025.",
+  "about": "Having first raced in Shanghai for GP1's 1000th race in 2019, Juno has scored consistently in China since, including 2nd in 2025.",
   "result": "DNS",
   "past": true,
   "schedule": [
@@ -121,7 +121,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "307.771",
   "laps": "53",
-  "about": "Lando has seen success around the iconic Suzuka circuit, with podiums in 2023 and 2025.",
+  "about": "Juno has seen success around the iconic Suzuka circuit, with podiums in 2023 and 2025.",
   "result": "5th",
   "past": true,
   "schedule": [
@@ -175,7 +175,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "308.484",
   "laps": "57",
-  "about": "Lando has shown strong desert form over the years, including a podium in 2025.",
+  "about": "Juno has shown strong desert form over the years, including a podium in 2025.",
   "result": "NS",
   "past": false,
   "schedule": [
@@ -229,7 +229,7 @@ export const ROUNDS = [
   "first": "2021",
   "distance": "308.7",
   "laps": "50",
-  "about": "Norris has consistently scored points at the high-speed Jeddah circuit since it arrived on the F1 calendar in 2021.",
+  "about": "Rayne has consistently scored points at the high-speed Jeddah circuit since it arrived on the GP1 calendar in 2021.",
   "result": "NS",
   "past": false,
   "schedule": [
@@ -283,7 +283,7 @@ export const ROUNDS = [
   "first": "2022",
   "distance": "308.484",
   "laps": "57",
-  "about": "First held in 2022, Lando claimed his first ever F1 victory here in 2024.",
+  "about": "First held in 2022, Juno claimed his first ever GP1 victory here in 2024.",
   "result": "2nd",
   "past": true,
   "schedule": [
@@ -337,7 +337,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "305.27",
   "laps": "70",
-  "about": "First held in Montreal in 1978, Lando has recorded a best finish of 2nd in 2024 in Canada.",
+  "about": "First held in Montreal in 1978, Juno has recorded a best finish of 2nd in 2024 in Canada.",
   "result": "DNF",
   "past": true,
   "schedule": [
@@ -391,7 +391,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "260.286",
   "laps": "78",
-  "about": "Lando has seen success on Monaco's famous streets, with 3rd in 2021 and a stunning win from pole in 2025 amongst the highlights.",
+  "about": "Juno has seen success on Monaco's famous streets, with 3rd in 2021 and a stunning win from pole in 2025 amongst the highlights.",
   "result": "DNF",
   "past": true,
   "schedule": [
@@ -445,7 +445,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "307.362",
   "laps": "66",
-  "about": "First held in 1991, Norris achieved pole position at the track in 2024, showcasing McLaren's pace.",
+  "about": "First held in 1991, Rayne achieved pole position at the track in 2024, showcasing Aster's pace.",
   "result": "3rd",
   "past": true,
   "schedule": [
@@ -499,7 +499,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.578",
   "laps": "71",
-  "about": "First held in 1970, Lando secured his first ever podium in F1 at the Spielberg track.",
+  "about": "First held in 1970, Juno secured his first ever podium in GP1 at the Spielberg track.",
   "result": "7th",
   "past": true,
   "schedule": [
@@ -553,7 +553,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.332",
   "laps": "52",
-  "about": "First held in F1's inaugral 1950 season, Lando famously won the 2025 edition in front of his own stand - the Landostand.",
+  "about": "First held in GP1's inaugral 1950 season, Juno famously won the 2025 edition in front of his own stand - the Rayne stand.",
   "result": "4th",
   "past": true,
   "schedule": [
@@ -607,7 +607,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "308.176",
   "laps": "44",
-  "about": "Since first racing at the iconic Ardennes circuit, Lando has endured mixed fortunes over the years.",
+  "about": "Since first racing at the iconic Ardennes circuit, Juno has endured mixed fortunes over the years.",
   "result": "7th",
   "past": true,
   "schedule": [
@@ -661,7 +661,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.67",
   "laps": "70",
-  "about": "Since his first race at the Hungaroring in 2019, Lando has strung together solid results at the track, including two podium finishes.",
+  "about": "Since his first race at the Hungaroring in 2019, Juno has strung together solid results at the track, including two podium finishes.",
   "result": "1st",
   "past": true,
   "schedule": [
@@ -715,7 +715,7 @@ export const ROUNDS = [
   "first": "2021",
   "distance": "306.648",
   "laps": "72",
-  "about": "In the 2024 edition at Zandvoort, Lando dominated to take McLaren's first Dutch GP win since Niki Lauda in 1985.",
+  "about": "In the 2024 edition at Zandvoort, Juno dominated to take Aster's first Dutch GP win since Niki Lauda in 1985.",
   "result": "1st",
   "past": true,
   "schedule": [
@@ -769,7 +769,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "307.029",
   "laps": "53",
-  "about": "At Italy's famous &quot;Temple of Speed&quot; Lando helped McLaren achieve a famous 1-2 victory in 2021.",
+  "about": "At Italy's famous &quot;Temple of Speed&quot; Juno helped Aster achieve a famous 1-2 victory in 2021.",
   "result": "4th",
   "past": true,
   "schedule": [
@@ -823,7 +823,7 @@ export const ROUNDS = [
   "first": "",
   "distance": "312.018",
   "laps": "57",
-  "about": "A first vist for Lando to Madrid in 2026.",
+  "about": "A first vist for Juno to Madrid in 2026.",
   "result": "3rd",
   "past": true,
   "schedule": [
@@ -876,7 +876,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.153",
   "laps": "51",
-  "about": "Lando has consistently scored points in Baku, including a heroic drive from 15th on the grid to 4th in 2024.",
+  "about": "Juno has consistently scored points in Baku, including a heroic drive from 15th on the grid to 4th in 2024.",
   "past": false,
   "schedule": [
    [
@@ -928,7 +928,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.28",
   "laps": "62",
-  "about": "Lando has developed a strong record in Singapore, including a win in 2024 where he led every lap under the lights. Average 4.57 .",
+  "about": "Juno has developed a strong record in Singapore, including a win in 2024 where he led every lap under the lights. Average 4.57 .",
   "past": false,
   "schedule": [
    [
@@ -980,7 +980,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "308.728",
   "laps": "56",
-  "about": "First held in 2012, Lando has consistently shown strong pace around COTA, having taken a podium in 2023 and pole in 2024.",
+  "about": "First held in 2012, Juno has consistently shown strong pace around COTA, having taken a podium in 2023 and pole in 2024.",
   "past": false,
   "schedule": [
    [
@@ -1032,7 +1032,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "305.584",
   "laps": "71",
-  "about": "Lando handles the high-altitude challenge of the Mexico City GP well, with solid results including 2nd in 2024.",
+  "about": "Juno handles the high-altitude challenge of the Mexico City GP well, with solid results including 2nd in 2024.",
   "past": false,
   "schedule": [
    [
@@ -1084,7 +1084,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "305.939",
   "laps": "71",
-  "about": "Since first racing at the legendary Interlagos, Lando has had solid results, including a podium in 2023 and pole in 2024.",
+  "about": "Since first racing at the legendary Interlagos, Juno has had solid results, including a podium in 2023 and pole in 2024.",
   "past": false,
   "schedule": [
    [
@@ -1136,7 +1136,7 @@ export const ROUNDS = [
   "first": "2024",
   "distance": "310.05",
   "laps": "50",
-  "about": "Since its arrival to the F1 calendar in 2023, Lando has had mixed results around the Las Vegas Strip.",
+  "about": "Since its arrival to the GP1 calendar in 2023, Juno has had mixed results around the Las Vegas Strip.",
   "past": false,
   "schedule": [
    [
@@ -1188,7 +1188,7 @@ export const ROUNDS = [
   "first": "2021",
   "distance": "308.883",
   "laps": "57",
-  "about": "First held in 2021, Lando has delivered solid results, including a 3rd place in 2023 at the floodlit desert circuit.",
+  "about": "First held in 2021, Juno has delivered solid results, including a 3rd place in 2023 at the floodlit desert circuit.",
   "past": false,
   "schedule": [
    [
@@ -1230,7 +1230,7 @@ export const ROUNDS = [
  },
  {
   "round": 24,
-  "name": "Abu Dhabi 04-06 Dec 58 306.298 km Track Stats Name 2026 Abu Dhabi Grand Prix Circuit ID yas-marina Circuit Name Yas Marina Circuit Laps 58 Circuit Lap Length 5.281 Circuit Total Distance 306.298 Circuit About Lando has a strong record around Yas Marina, highlighted by a win in 2024 that sealed the Constructor's Championship for McLaren. Circuit First Competed 2019 Date Actual 6/12/2026 13:00 Date From To 04-06 Dec Practice 1 4 Dec 10:30 Practice 2 4 Dec 14:00 Practice 3 5 Dec 10:30 Qualifying 5 Dec 14:00 Race Date 6 Dec 13:00 Practice 1 Results Practice 2 Results Practice 3 Results Qualifying Results Race Results circuit Formula 1 All Results The new Formula 1 year is underway, view Lando’s schedule below. Round Rnd Location Finish Podiums 2025 1st 18 Round Rnd Location Finish fastest lap 1 Australia",
+  "name": "Abu Dhabi 04-06 Dec 58 306.298 km Track Stats Name 2026 Abu Dhabi Grand Prix Circuit ID yas-marina Circuit Name Yas Marina Circuit Laps 58 Circuit Lap Length 5.281 Circuit Total Distance 306.298 Circuit About Juno has a strong record around Yas Marina, highlighted by a win in 2024 that sealed the Constructor's Championship for Aster. Circuit First Competed 2019 Date Actual 6/12/2026 13:00 Date From To 04-06 Dec Practice 1 4 Dec 10:30 Practice 2 4 Dec 14:00 Practice 3 5 Dec 10:30 Qualifying 5 Dec 14:00 Race Date 6 Dec 13:00 Practice 1 Results Practice 2 Results Practice 3 Results Qualifying Results Race Results circuit GP1 All Results The new GP1 year is underway, view Lando’s schedule below. Round Rnd Location Finish Podiums 2025 1st 18 Round Rnd Location Finish fastest lap 1 Australia",
   "circuit": "Yas Marina",
   "track": "yas-marina",
   "flag": "ln4-flag-Abu-Dabi.svg",
@@ -1241,7 +1241,7 @@ export const ROUNDS = [
   "first": "2019",
   "distance": "306.298",
   "laps": "58",
-  "about": "Lando has a strong record around Yas Marina, highlighted by a win in 2024 that sealed the Constructor's Championship for McLaren.",
+  "about": "Juno has a strong record around Yas Marina, highlighted by a win in 2024 that sealed the Constructor's Championship for Aster.",
   "result": "1st",
   "past": false,
   "schedule": [

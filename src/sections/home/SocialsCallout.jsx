@@ -6,6 +6,7 @@ import { SOCIALS } from '../../data/site';
 import { SOCIAL_CARDS } from '../../data/home';
 import RiveCanvas from '../../components/RiveCanvas';
 import TextHover from '../../components/TextHover';
+import { ID } from '../../data/identity';
 
 /**
  * "What's up on socials": a fan of 7 tall rounded cards. On scroll the fan opens:
@@ -40,7 +41,7 @@ export default function SocialsCallout({ cards = SOCIAL_CARDS, theme = 'light' }
               </div>
             ))}
           </div>
-          <div className="mt-[calc(var(--gap)*3)]"><p className="t-cta-intro">Follow Lando on social media</p></div>
+          <div className="mt-[calc(var(--gap)*3)]"><p className="t-cta-intro">Follow {ID.first} on social media</p></div>
           <div className="flex gap-[calc(var(--gap)*1.5)] t-btn">
             {SOCIALS.map(([label, href]) => <a key={label} href={href} target="_blank" rel="noreferrer"><TextHover>{label}</TextHover></a>)}
           </div>

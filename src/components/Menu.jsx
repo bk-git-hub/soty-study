@@ -6,6 +6,7 @@ import { getLenis } from '../lib/SmoothScroll';
 import RiveCanvas from './RiveCanvas';
 import TextHover from './TextHover';
 import { SOCIALS } from '../data/site';
+import { ID } from '../data/identity';
 
 const LINKS = [
   { to: '/', label: 'Home' },
@@ -77,11 +78,11 @@ export default function Menu({ open, onClose }) {
             <div className="flex flex-col items-center gap-[var(--gap)] text-green-off-white-2">
               <RiveCanvas file="reef" artboard="helmet-reef" stateMachine="helmet-reef_scroll"
                           inputs={{ 'color_green-off-white-2': true }} className="w-[5rem] h-[2.6rem]" />
-              <span className="t-eyebrow">mclaren f1 since 2019</span>
+              <span className="t-eyebrow">{`${ID.team} ${ID.series} since 2019`.toLowerCase()}</span>
             </div>
           </div>
           <div className="flex flex-col items-center gap-[2rem]">
-            <a href="https://store.landonorris.com" target="_blank" rel="noreferrer" className="t-btn"><TextHover>Store</TextHover></a>
+            <a href="#" target="_blank" rel="noreferrer" className="t-btn"><TextHover>Store</TextHover></a>
             <div className="flex gap-[var(--gap)] t-btn">
               {SOCIALS.map(([label, href]) => <a key={label} href={href} target="_blank" rel="noreferrer"><TextHover>{label}</TextHover></a>)}
             </div>

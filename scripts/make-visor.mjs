@@ -1,13 +1,15 @@
 // Generates our own visor ("glass") textures for the helmet: a black visor with a sun strip in the site's
 // lime carrying a wordmark (Mona Sans, OFL), plus a roughness map built from the visor's own UV islands
 // (glossy visor, satin hardware). Self-made, so it can be published.
-// Usage: node scripts/make-visor.mjs [text="SOTY STUDY"]
+// Usage: node scripts/make-visor.mjs [text=team name]
 //   writes public/assets/helmet/visor-base.webp and public/assets/helmet/visor-roughness.png
 import { readFileSync, writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
 import { chromium } from 'playwright';
+import { ID } from '../src/data/identity.js';
 
-const TEXT = process.argv[2] || 'SOTY STUDY';
+// default: the fictional team's name, like a team strip on a real visor
+const TEXT = process.argv[2] || ID.team.toUpperCase();
 const SIZE = 2048;
 // the sun strip band on the visor island, in UV (measured on the original's layout: the white panel
 // rows 76..116 of 1024, the strip runs from the left tab to the right tab)

@@ -30,7 +30,7 @@ export default function Store() {
               <Eyebrow className="large">{STORE.eyebrow}</Eyebrow>
               <h2 className="t-impact-lg reduce">{STORE.title[0]}<br /><span className="serif">{STORE.title[1]}</span></h2>
               <p className="t-body-reg max-w-[32.4375rem]">{STORE.text}</p>
-              <Button to="https://store.landonorris.com" external>{STORE.cta}</Button>
+              <Button to="#" external>{STORE.cta}</Button>
             </div>
             <div className="absolute -left-[14rem] -bottom-[8rem] w-[16.375rem] h-[11.875rem] overflow-clip z-0">
               <img src={cdn(STORE.images.left)} alt="" className="p-img w-full object-cover" style={{ height: 'calc(100% + 4rem)' }} />

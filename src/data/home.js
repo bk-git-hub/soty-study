@@ -1,15 +1,16 @@
 // Home page content, transcribed from observation of landonorris.com.
+import { ID } from './identity';
 
 // Horizontal gallery. Columns are groups stacked vertically; spacers are gaps in vh (see --grid-spacer).
 // Sizes are approximate observations (rem) and get tuned against the reference frames later.
 export const HORIZONTAL = [
   { col: [
     { caption: 'Qatar, 2024', img: 'ln-home-horiz-1.webp', w: 17.5, h: 23.5, tone: 'light' },
-    { caption: 'FIA Prize Giving, 2024', img: 'ln-home-horiz-2.webp', w: 17.5, h: 12.5, tone: 'light' },
+    { caption: 'Awards Night, 2024', img: 'ln-home-horiz-2.webp', w: 17.5, h: 12.5, tone: 'light' },
   ] },
   { spacer: 1 },
   { col: [
-    { quote: true, text: ['It doesn’t matter ', ['where'], ' you start, it’s ', ['how'], ' you progress from there.'], signature: 'ln4-hw-signature2.svg', tone: 'light' },
+    { quote: true, text: ['It isn’t about ', ['where'], ' you begin, it’s ', ['how'], ' you keep going.'], signature: 'ln4-hw-signature2.svg', tone: 'light' },
     { caption: 'Miami GP, 2024', img: 'ln-home-horiz-3.webp', w: 26, h: 35, tone: 'light' },
   ], large: true },
   { spacer: 1 },
@@ -27,7 +28,7 @@ export const HORIZONTAL = [
   { spacer: 0.5 },
   { col: [
     { caption: 'Barcelona, 2024', img: 'ln-home-horiz-8.webp', w: 22, h: 30, tone: 'dark' },
-    { quote: true, text: ['Since I was 7 years old and had my first experience with kart racing, I’ve worked tirelessly to make that dream come true.'], signature: 'ln4-signature-dark-green.webp', tone: 'dark' },
+    { quote: true, text: ['From my first laps in a go-kart at nine, I’ve chased one dream and never once let it go.'], signature: 'ln4-signature-dark-green.webp', tone: 'dark' },
   ] },
   { spacer: 1 },
   { col: [
@@ -42,11 +43,11 @@ export const SOCIAL_CARDS = [
 ];
 
 export const STORE = {
-  eyebrow: 'LANDO STORE',
-  title: ['World Drivers’', 'Champion'],
-  text: 'Celebrate this incredible moment with a collection designed for the fans who never stopped believing. Wear it, frame it, treasure it forever.',
+  eyebrow: `${ID.last.toUpperCase()} STORE`,
+  title: [`${ID.series} Drivers’`, 'Champion'],
+  text: 'Mark a season to remember with a collection made for the fans who stayed loud to the very last lap. Wear it, frame it, keep it forever.',
   cta: 'Visit the store',
   images: { main: 'lando-store-gold-5.webp', clip: 'lando-store-gold-3.webp', small: 'lando-store-gold-1.webp', left: 'lando-store-gold-2.webp', sticker: 'LN1.webp' },
 };
 
-export const IMPACT = [['Redefining'], ' limits, fighting for ', ['wins'], ', bringing it all in all ways. Defining a ', ['legacy'], ' in Formula 1 on and off the track.'];
+export const IMPACT = [['Rewriting'], ' limits, racing for ', ['wins'], ', giving everything in every way. Building a ', ['legacy'], ` in ${ID.series} on and off the track.`];

@@ -3,6 +3,7 @@ import { useNavTheme } from '../../lib/navTheme';
 import { cdn } from '../../lib/assets';
 import { HELMETS } from '../../data/helmets';
 import Eyebrow from '../../components/Eyebrow';
+import { ID } from '../../data/identity';
 
 /**
  * Helmets Hall of Fame: black section, 4-column grid of "visor" shaped cards.
@@ -51,7 +52,7 @@ export default function Helmets() {
             <h2 className="t-title-lg"><span className="t-title-lg-serif text-lime-off">Hall of Fame</span></h2>
           </div>
           <div className="col-span-2 text-grey-on-track flex flex-col items-start">
-            <p className="t-body-reg max-w-[26rem]">From his iconic blobs to innovative one-off designs, Lando has always been passionate about designing innovative and memorable helmets.</p>
+            <p className="t-body-reg max-w-[26rem]">From bold contour lines to one-off specials, {ID.first} treats every helmet as a canvas worth remembering.</p>
           </div>
         </div>
         <div className="h-[8.75rem]" />
