@@ -1,5 +1,5 @@
 // Phone view of the hall of fame: a phone-sized, touch-emulating page scrolled through the grid in even
-// steps, one screenshot per step (named s<step*100>.png so frames2gif.mjs can take them), plus the
+// steps, one screenshot per step (named t<step*100>.png so frames2gif.mjs can take them), plus the
 // column offset at each step. Usage: node scripts/helmet-mobile-cast.mjs <outDir> [base] [stepPx=40]
 import { chromium } from 'playwright';
 import { mkdirSync, rmSync } from 'node:fs';
@@ -24,7 +24,7 @@ for (let y = from; y <= to; y += STEP, i++) {
     const m = await p.evaluate(() => { const g = document.querySelector('.helmet-stagger'); const c = g.children; return { stagger: getComputedStyle(g).getPropertyValue('--stagger').trim(), diff: Math.round(c[1].getBoundingClientRect().top - c[0].getBoundingClientRect().top) }; });
     console.log(`step ${i} scrollY ${y} stagger ${m.stagger} col2-col1 ${m.diff}px`);
   }
-  await p.screenshot({ path: `${out}/s${String(i * 100).padStart(5, '0')}.png` });
+  await p.screenshot({ path: `${out}/t${String(i * 100).padStart(5, '0')}.png` });
 }
 await b.close();
 console.log('frames', i);
