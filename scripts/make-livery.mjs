@@ -1,13 +1,15 @@
 // Generates our own helmet livery: the site's contour field (same recipe as BackgroundWaves.jsx: a warped
 // simplex noise, its value wrapped into three ramps, split into two bands) painted in the site's colours
 // straight into the helmet's UV space. Self-made, so it can be published.
-// Usage: node scripts/make-livery.mjs [name=contour] [scale=3] [threshold=0.5] [seed=7]
+// Usage: node scripts/make-livery.mjs [name=contour] [scale=3] [threshold=0.5] [seed=7] [ink]
+//   ink: cartoon style, a dark ink line along every band boundary (for the toon-shaded helmet)
 //   writes compare/helmet-livery/<name>.png (preview) and public/assets/helmet/livery-<name>.webp
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { PNG } from 'pngjs';
 import { chromium } from 'playwright';
 
-const [name = 'contour', scaleArg = '3', thrArg = '0.5', seedArg = '7'] = process.argv.slice(2);
+const [name = 'contour', scaleArg = '3', thrArg = '0.5', seedArg = '7', inkArg] = process.argv.slice(2);
+const INK = inkArg === 'ink', INK_COLOUR = [17, 17, 18], INK_PX = 3; // line half-width in output pixels
 const SIZE = 2048, SS = 2; // 2x2 supersampling: soft band edges instead of jaggies
 const SCALE = +scaleArg, THRESHOLD = +thrArg, DETAIL = 3;
 const DISTORT_SCALE = 0.8, DISTORT_INTENSITY = 0.8; // domain warp, like the page background
@@ -48,15 +50,45 @@ function band(u, v) {
   return n > THRESHOLD ? 1 : 0;
 }
 
+// 1. the band on a grid of SS x SS samples per output pixel
+const G = SIZE * SS;
+const grid = new Uint8Array(G * G);
+for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) grid[y * G + x] = band((x + 0.5) / G, (y + 0.5) / G);
+// 2. ink (optional): mark samples where the band changes, then widen the marks to a line with a box
+//    dilation, done as two 1D passes (a max over +-R along x, then along y) instead of a 2D window
+let ink = null;
+if (INK) {
+  const R = INK_PX * SS, edge = new Uint8Array(G * G), tmp = new Uint8Array(G * G);
+  ink = new Uint8Array(G * G);
+  for (let y = 0; y < G - 1; y++) for (let x = 0; x < G - 1; x++) {
+    const i = y * G + x;
+    if (grid[i] !== grid[i + 1] || grid[i] !== grid[i + G]) edge[i] = 1;
+  }
+  for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+    let m = 0; for (let k = Math.max(0, x - R); k <= Math.min(G - 1, x + R) && !m; k++) m = edge[y * G + k];
+    tmp[y * G + x] = m;
+  }
+  for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+    let m = 0; for (let k = Math.max(0, y - R); k <= Math.min(G - 1, y + R) && !m; k++) m = tmp[k * G + x];
+    ink[y * G + x] = m;
+  }
+}
+// 3. average the samples of each output pixel: soft edges instead of jaggies
 const png = new PNG({ width: SIZE, height: SIZE });
 for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-  let cover = 0;
-  for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) cover += band((x + (sx + 0.5) / SS) / SIZE, (y + (sy + 0.5) / SS) / SIZE);
-  cover /= SS * SS;
+  let cover = 0, inked = 0;
+  for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) {
+    const i = (y * SS + sy) * G + x * SS + sx;
+    cover += grid[i]; if (ink) inked += ink[i];
+  }
+  cover /= SS * SS; inked /= SS * SS;
   const o = (y * SIZE + x) * 4;
   const u = (x + 0.5) / SIZE, v = (y + 0.5) / SIZE;
   const grille = u >= GRILLE.u0 && u <= GRILLE.u1 && v >= GRILLE.v0 && v <= GRILLE.v1;
-  for (let c = 0; c < 3; c++) png.data[o + c] = grille ? GRILLE_COLOUR[c] : Math.round(DARK[c] + (LIME[c] - DARK[c]) * cover);
+  for (let c = 0; c < 3; c++) {
+    const paint = DARK[c] + (LIME[c] - DARK[c]) * cover;
+    png.data[o + c] = grille ? GRILLE_COLOUR[c] : Math.round(paint + (INK_COLOUR[c] - paint) * inked);
+  }
   png.data[o + 3] = 255;
 }
 mkdirSync('compare/helmet-livery', { recursive: true });

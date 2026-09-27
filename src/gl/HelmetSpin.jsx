@@ -4,6 +4,7 @@ import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { model, hdri } from '../lib/assets';
 import { helmetMaps, pickLivery } from './helmetMaps';
+import { makeToonMaterial, makeOutlineMaterial } from './toonMaterial';
 import Env from './Env';
 
 // Draco decoder served locally (copied next to the original assets) so model loading never waits on a third-party CDN.
@@ -23,8 +24,19 @@ function Model({ scrollRef, variant, fill }) {
   [base, normal, rough, metal].forEach((t) => { if (t) t.flipY = false; });
   // metalness is capped below 1 so the paint still picks up the direct lights even before the
   // HDR environment has loaded (a fully metallic surface with no env map renders black)
-  const mat = useMemo(() => new THREE.MeshStandardMaterial({ map: base, normalMap: normal, roughnessMap: rough || null, metalnessMap: metal || null, metalness: 0.7, roughness: 0.9, envMapIntensity: 1.4 }), [base, normal, rough, metal]);
-  useEffect(() => { scene.traverse((o) => { if (o.isMesh) o.material = mat; }); }, [scene, mat]);
+  const mat = useMemo(() => maps.toon ? makeToonMaterial(base) : new THREE.MeshStandardMaterial({ map: base, normalMap: normal, roughnessMap: rough || null, metalnessMap: metal || null, metalness: 0.7, roughness: 0.9, envMapIntensity: 1.4 }), [maps, base, normal, rough, metal]);
+  useEffect(() => {
+    const meshes = [];
+    scene.traverse((o) => { if (o.isMesh && !o.userData.hull) meshes.push(o); });
+    for (const o of meshes) {
+      o.material = mat;
+      // toon: an inked silhouette as a child hull (added once; the GLB scene is cached across mounts)
+      if (maps.toon && !o.userData.hasHull) {
+        const hull = new THREE.Mesh(o.geometry, makeOutlineMaterial(0.0009));
+        hull.userData.hull = true; o.userData.hasHull = true; o.add(hull);
+      }
+    }
+  }, [scene, mat, maps]);
   const fit = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene);
     return { size: box.getSize(new THREE.Vector3()), center: box.getCenter(new THREE.Vector3()) };

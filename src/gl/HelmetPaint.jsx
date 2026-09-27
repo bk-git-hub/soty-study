@@ -4,6 +4,7 @@ import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { model } from '../lib/assets';
 import { helmetMaps, pickLivery } from './helmetMaps';
+import { makeToonMaterial, makeOutlineMaterial } from './toonMaterial';
 import { SCROLL_FILTER_GLSL } from './scrollOut';
 import { REVEAL_MASK_GLSL } from './FluidSim';
 
@@ -93,13 +94,16 @@ export default function HelmetPaint({ reveal, rig, view }) {
     // dev only: ?rough=<0..1> overrides the shell roughness (used to study the r174 vs r186 PMREM difference)
     const q = import.meta.env.DEV ? new URLSearchParams(location.search).get('rough') : null;
     const roughness = q !== null && q !== '' && !isNaN(+q) ? +q : SHELL_ROUGHNESS;
-    const shell = new THREE.MeshStandardMaterial({ map: base, normalMap: normal, metalness: 1, roughness, envMapIntensity: livery === 'disco' ? 1.5 : 3 });
+    const toon = maps.toon;
+    const shell = toon ? makeToonMaterial(base) : new THREE.MeshStandardMaterial({ map: base, normalMap: normal, metalness: 1, roughness, envMapIntensity: livery === 'disco' ? 1.5 : 3 });
     // the original also hands the visor the *helmet's* metallic map, but with the default metalness factor
     // of 0 it has no effect (the map multiplies the factor), so it is left out: the visor shades as a dark
     // dielectric with sharp HDRI reflections either way
-    const glass = new THREE.MeshStandardMaterial({ map: glassBase, roughnessMap: glassRoughness, normalMap: glassNormal, envMapIntensity: 1.5 });
+    const glass = toon ? makeToonMaterial(glassBase, { visor: true }) : new THREE.MeshStandardMaterial({ map: glassBase, roughnessMap: glassRoughness, normalMap: glassNormal, envMapIntensity: 1.5 });
     const plastic = new THREE.MeshMatcapMaterial({ matcap, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
     const materials = { helmet: shell, glass, plastic };
+    const outline = toon ? makeOutlineMaterial() : null;
+    if (outline) materials.outline = outline;
 
     const root = new THREE.Group();
     root.matrixAutoUpdate = false; // driven by the blueprint helmet's world matrix, see useFrame
@@ -109,10 +113,15 @@ export default function HelmetPaint({ reveal, rig, view }) {
       if (o.name === 'plastic') mesh.renderOrder = 1;
       mesh.frustumCulled = false;
       root.add(mesh);
+      if (outline && o.name !== 'plastic') { // the inked silhouette (inverted hull), drawn behind the surface
+        const hull = new THREE.Mesh(o.geometry, outline);
+        hull.frustumCulled = false;
+        root.add(hull);
+      }
     });
     const target = new THREE.WebGLRenderTarget(16, 16, { samples: 2, type: THREE.UnsignedByteType });
-    return { scene: new THREE.Scene().add(root), root, target, lit: [shell, glass], materials };
-  }, [glb, livery, base, normal, glassBase, glassRoughness, glassNormal, matcap]);
+    return { scene: new THREE.Scene().add(root), root, target, lit: toon ? [] : [shell, glass], materials };
+  }, [glb, livery, maps, base, normal, glassBase, glassRoughness, glassNormal, matcap]);
   useEffect(() => () => { off.target.dispose(); Object.values(off.materials).forEach((m) => m.dispose()); }, [off]);
 
   const quad = useRef();

@@ -8,19 +8,22 @@ import { gl as glAsset } from '../lib/assets';
  *    committed); dev builds can look at them with ?variant=<folder>.
  */
 export const OWN_LIVERY = 'contour';
+// cartoon version: the same livery with ink lines, drawn with cel shading (toonMaterial.js)
+export const TOON_LIVERY = 'toon';
 export const ORIGINAL_LIVERIES = ['gold', 'lime', 'dark', 'google', 'grid', 'disco'];
 
 export function pickLivery() {
   const forced = import.meta.env.DEV ? new URLSearchParams(location.search).get('variant') : null;
-  return ORIGINAL_LIVERIES.includes(forced) || forced === OWN_LIVERY ? forced : OWN_LIVERY;
+  return ORIGINAL_LIVERIES.includes(forced) || forced === OWN_LIVERY || forced === TOON_LIVERY ? forced : TOON_LIVERY;
 }
 
 /** Texture URLs for a livery (shell and visor). `own` tells the renderers the maps are ours (no shell roughness / metallic maps). */
 export function helmetMaps(livery) {
-  if (livery === OWN_LIVERY) {
+  if (livery === OWN_LIVERY || livery === TOON_LIVERY) {
+    const toon = livery === TOON_LIVERY;
     return {
-      own: true,
-      base: '/assets/helmet/livery-contour.webp', normal: '/assets/helmet/normal-flat.png',
+      own: true, toon,
+      base: toon ? '/assets/helmet/livery-toon.webp' : '/assets/helmet/livery-contour.webp', normal: '/assets/helmet/normal-flat.png',
       // the visor: black with a lime sun strip (scripts/make-visor.mjs); its normal map is flat too
       glassBase: '/assets/helmet/visor-base.webp', glassRoughness: '/assets/helmet/visor-roughness.png', glassNormal: '/assets/helmet/normal-flat.png',
       matcap: '/assets/helmet/matcap-plastic.png', // the clear plastic parts (scripts/make-matcap.mjs)
