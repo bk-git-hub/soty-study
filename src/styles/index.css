@@ -198,6 +198,10 @@ html.nav-scrolled .nav-mark { opacity: 0; pointer-events: none; }
 /* Helmet card reveal (hover image wipes in from the top with an ellipse) */
 .helmet-reveal { clip-path: ellipse(100% 0% at 50% 0); transform: scale(1.05); transition: clip-path var(--anim-default), transform var(--anim-default); }
 .helmet-card:hover .helmet-reveal { clip-path: ellipse(100% 120% at 50% 0%); transform: scale(1); }
+/* hall of fame zigzag: odd cards (columns 1 and 3) up, even cards (2 and 4) down, by --stagger (1 -> 0 on scroll) */
+.helmet-stagger { --stagger: 1; --stagger-amp: 18%; }
+.helmet-stagger > .helmet-card { --dir: 1; transform: translateY(calc(var(--dir) * var(--stagger) * var(--stagger-amp))); will-change: transform; }
+.helmet-stagger > .helmet-card:nth-child(odd) { --dir: -1; }
 
 /* Highlight reveal (src/lib/highlight.js): a lime-off block covers the text from the left, then leaves to
    the right. The text is hidden until the block is over it. --hl-r / --hl-l are the block's right / left
