@@ -38,3 +38,8 @@ src/data/calendar.js
 src/data/results.js
 src/data/offTrack.js
 src/data/onTrack.js
+
+.vercel
+
+.vercel
+.env*
