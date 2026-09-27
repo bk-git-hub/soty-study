@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
 import { rive as riveUrl } from '../lib/assets';
+import OwnRive, { OWN_RIVE_FILES } from './OwnRive';
 
 /**
  * Thin wrapper over the Rive runtime.
@@ -11,7 +12,12 @@ import { rive as riveUrl } from '../lib/assets';
  * hover:  when true, toggles a boolean input named "hover" on pointer enter/leave (btn-ui arrows).
  * play:   false keeps the state machine paused until you flip it (used for scroll-triggered plays).
  */
-export default function RiveCanvas({
+// Files we have redrawn ourselves (OwnRive.jsx) never load the original .riv; the rest still do.
+export default function RiveCanvas(props) {
+  return OWN_RIVE_FILES.has(props.file) ? <OwnRive {...props} /> : <RiveOriginal {...props} />;
+}
+
+function RiveOriginal({
   file, artboard, stateMachine, inputs = {}, fit = 'contain', hover = false, play = true, className = '', style,
 }) {
   const { rive, RiveComponent } = useRive({

@@ -5,6 +5,7 @@ import App from './App.jsx';
 // the Google Fonts build of Mona Sans (wdth + wght axes), the build the original loads: see index.css
 import '@fontsource-variable/mona-sans/wdth.css';
 import './styles/index.css';
+import '@fontsource/instrument-serif/400.css';
 
 if (import.meta.env.DEV) {
   // print full stack lines separately so dev-tools/console readers don't truncate them

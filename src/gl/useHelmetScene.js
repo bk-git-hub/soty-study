@@ -1,7 +1,8 @@
 import { useGLTF } from '@react-three/drei';
 import { model } from '../lib/assets';
 
-const DRACO = '/orig/runtime/draco/';
+// Draco decoder from three.js (three/examples/jsm/libs/draco/gltf, Apache-2.0), copied to public/assets
+const DRACO = '/assets/draco/';
 
 /**
  * The helmet's scene graph (meshes "helmet", "glass", "plastic"): the original's GLB, kept by the

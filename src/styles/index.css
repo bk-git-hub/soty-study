@@ -20,7 +20,7 @@
   --color-cream: #efefe5;
 
   --font-sans: "Mona Sans Variable", Arial, sans-serif;
-  --font-serif: "Brier", "Instrument Serif", Georgia, serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
 }
 
 :root {
@@ -55,12 +55,10 @@
    description wrapped a word later than the original's; no fixed opsz value reproduced the other build).
    That TTF stays in public/fonts for scripts/make-visor.mjs. Brier is a commercial face: local dev loads
    the original from the gitignored public/orig folder; the public build falls back to Instrument Serif. */
-@font-face {
-  font-family: "Brier";
-  src: url("/orig/runtime/fonts/Brier-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-display: swap;
-}
+/* this build: the serif is Instrument Serif (OFL, @fontsource/instrument-serif, imported in main.jsx).
+   It has one weight (400); the classes ask for 700, so bold synthesis is switched off to keep the
+   real letterforms instead of a smeared fake bold. */
+:root { font-synthesis-weight: none; }
 
 html { font-size: var(--fluid-font); scrollbar-width: none; }
 html::-webkit-scrollbar { display: none; }
@@ -210,3 +208,16 @@ html.nav-scrolled .nav-mark { opacity: 0; pointer-events: none; }
 .hl-text { visibility: hidden; }
 /* 1 px over the line box top and bottom: stacked lines' blocks meet at fractional rows and their anti-aliased edges left a faint dark seam between them */
 .hl-block { position: absolute; inset: -1px 0; background: var(--color-lime-off); pointer-events: none; --hl-l: 0%; --hl-r: 100%; clip-path: inset(0 var(--hl-r) 0 var(--hl-l)); }
+
+/* our stand-ins for the Rive files (components/OwnRive.jsx): lines write themselves (dash offset 1 -> 0,
+   pathLength 1), leaves pop in, one after another by --i; the button arrow leaves and a copy comes in */
+.own-draw path { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+.own-draw.is-drawn path { stroke-dashoffset: 0; transition: stroke-dashoffset .9s cubic-bezier(.65, 0, .35, 1) calc(var(--i, 0) * .12s); }
+.own-draw-slow.is-drawn path { transition-duration: 1.2s; transition-delay: calc(var(--i, 0) * .22s); }
+.own-draw .own-pop { transform-box: fill-box; transform-origin: center; scale: 0; }
+.own-draw.is-drawn .own-pop { scale: 1; transition: scale .5s cubic-bezier(.34, 1.56, .64, 1) calc(var(--i, 0) * .08s + .3s); }
+.own-arrow path { transition: transform .45s cubic-bezier(.65, 0, .35, 1); }
+.own-arrow .a2 { transform: translate(-11px, 11px); }
+.btn:hover .own-arrow .a1 { transform: translate(11px, -11px); }
+.btn:hover .own-arrow .a2 { transform: translate(0, 0); }
+@media (prefers-reduced-motion: reduce) { .own-draw path, .own-draw .own-pop { transition: none !important; } }

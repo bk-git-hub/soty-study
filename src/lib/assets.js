@@ -32,4 +32,6 @@ export function cdn(name) {
 export const rive = (file) => `${RUNTIME}rive/${file}.riv`;
 export const gl = (rel) => `${RUNTIME}gl/${rel}`;
 export const model = (file) => `${RUNTIME}models/${file}.glb`;
-export const hdri = (file) => `${RUNTIME}hdri/${file}.hdr`;
+// the studio HDRI is Poly Haven's studio_small_08 (CC0), downloaded from polyhaven.com; the original's
+// edited variants (--light, --dark, --faded) all map to the one untouched file
+export const hdri = (file) => (file.startsWith('studio_small_08') ? '/assets/hdri/studio_small_08_1k.hdr' : `${RUNTIME}hdri/${file}.hdr`);
