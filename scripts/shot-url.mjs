@@ -7,7 +7,7 @@ const errors = [];
 p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 p.on('pageerror', (e) => errors.push(String(e)));
 p.on('response', (r) => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
-await p.goto('http://localhost:5173' + path, { waitUntil: 'load' });
+await p.goto((process.env.BASE || 'http://localhost:5173') + path, { waitUntil: 'load' });
 await new Promise((r) => setTimeout(r, +(waitS || 8) * 1000));
 await p.screenshot({ path: out, timeout: 60000, animations: 'allow' });
 await b.close();

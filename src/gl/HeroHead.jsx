@@ -9,7 +9,7 @@ import { REVEAL_MASK_GLSL } from './FluidSim';
 import { SCROLL_FILTER_GLSL, TARGET_REM, CAMERA_DOLLY, ALIVE_UNTIL, ALIVE_FADE, power1InOut, rectAt } from './scrollOut';
 import { makeBlueprintMaterial, makeBlueprintLines } from './BlueprintLines';
 import * as THREE from 'three';
-import { gl as glAsset, model, hdri } from '../lib/assets';
+import { model, hdri } from '../lib/assets';
 
 /*
  * The hero of the original is one shared WebGL canvas. The visible parts are:
@@ -127,10 +127,11 @@ function usePointer() {
 
 function Portrait({ pointer, progress, mask, view }) {
   const [diffuse, depth, alpha, shadow] = useTexture([
-    glAsset('textures/head/webp/diffuse.webp'),
-    glAsset('textures/head/webp/depth.webp'),
-    glAsset('textures/head/webp/alpha.webp'),
-    glAsset('textures/head/webp/shadow-softer-edit.webp'),
+    // the placeholder character in the photo's framing (scripts/make-hero-portrait.mjs)
+    '/assets/hero/diffuse.webp',
+    '/assets/hero/depth.webp',
+    '/assets/hero/alpha.webp',
+    '/assets/hero/shadow.webp',
   ]);
   diffuse.colorSpace = THREE.SRGBColorSpace;
   shadow.colorSpace = THREE.SRGBColorSpace;
