@@ -14,7 +14,7 @@ import Eyebrow from '../../components/Eyebrow';
  * Stagger (home page): the columns start in a zigzag, 1st and 3rd raised, 2nd and 4th lowered, and
  * straighten as the page scrolls: fully level by the time the last row leaves the top of the screen.
  * One number drives it: --stagger on the grid, 1 = full zigzag, 0 = level, written by a scrubbed
- * ScrollTrigger from "grid top enters at the bottom" to "grid bottom leaves at the top". Each card
+ * ScrollTrigger from "grid top enters at the bottom" to "grid bottom leaves at the top" (or the page end). Each card
  * moves by translateY(dir * stagger * AMP%), where % is of the card's own height and dir is -1 for odd
  * children, +1 for even ones: with 4 columns (or 2 on phones) odd children are always columns 1 and 3.
  */
@@ -26,14 +26,17 @@ export function HelmetGrid({ stagger = false }) {
     if (!stagger) return undefined;
     const el = grid.current;
     const st = ScrollTrigger.create({
-      trigger: el, start: 'top bottom', end: 'bottom top',
+      trigger: el, start: 'top bottom',
+      // level when the last row leaves the top of the screen, or at the end of the page if that comes
+      // first: on phones the footer is shorter than the screen and the last row never gets to leave
+      end: () => Math.min(el.getBoundingClientRect().bottom + window.scrollY, ScrollTrigger.maxScroll(window)),
       onUpdate: (self) => el.style.setProperty('--stagger', (1 - self.progress).toFixed(4)),
       onRefresh: (self) => el.style.setProperty('--stagger', (1 - self.progress).toFixed(4)),
     });
     return () => st.kill();
   }, [stagger]);
   return (
-    <div ref={grid} className={`grid grid-cols-4 gap-[var(--gap)] max-[991px]:grid-cols-2${stagger ? ' helmet-stagger' : ''}`}>
+    <div ref={grid} className={`grid grid-cols-4 gap-[var(--gap)] max-[991px]:grid-cols-2 ${stagger ? 'helmet-stagger' : ''}`}>
       {HELMETS.map((h, i) => (
         <div key={i} className="helmet-card relative group">
           <div className="helmet-item relative w-full flex" style={{ aspectRatio: '406.89 / 411' }}>
