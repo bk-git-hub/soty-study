@@ -221,3 +221,11 @@ html.nav-scrolled .nav-mark { opacity: 0; pointer-events: none; }
 .btn:hover .own-arrow .a1 { transform: translate(11px, -11px); }
 .btn:hover .own-arrow .a2 { transform: translate(0, 0); }
 @media (prefers-reduced-motion: reduce) { .own-draw path, .own-draw .own-pop { transition: none !important; } }
+
+/* loader: the J7 mark erases itself (0.35 s, speeding up) and redraws (0.5 s), about once a second */
+.loader-mark path { stroke-dasharray: 1 1; animation: loader-mark .94s infinite; }
+@keyframes loader-mark {
+  0% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+  37% { stroke-dashoffset: 1; animation-timing-function: cubic-bezier(.33, 0, .2, 1); }
+  90%, 100% { stroke-dashoffset: 0; }
+}

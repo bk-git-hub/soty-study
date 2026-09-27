@@ -1,0 +1,5 @@
+{
+  "buildCommand": "node scripts/fetch-models.mjs && vite build",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
