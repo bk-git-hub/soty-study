@@ -373,8 +373,61 @@ function background(sp, w, h, R) {
     case 'pink': s += rect('#e8457a') + Array.from({ length: 4 }, (_, i) => `<path d="M${f(-w * 0.2 + i * w * 0.35)} ${h}L${f(w * 0.2 + i * w * 0.35)} 0" stroke="#ffffff33" stroke-width="${f(m * 0.08)}"/>`).join(''); break;
     case 'red': s += rect('#c9262c') + `<rect x="${f(w * 0.1)}" y="${f(h * 0.08)}" width="${f(w * 0.8)}" height="${f(h * 0.35)}" rx="${f(m * 0.03)}" fill="#1b1b1f"/>` + [0, 1, 2].map((i) => `<rect x="${f(w * 0.16)}" y="${f(h * (0.13 + i * 0.1))}" width="${f(w * (0.6 - i * 0.1))}" height="${f(h * 0.05)}" fill="#fff"/>`).join(''); break;
     case 'car': s += rect('#141512') + `<circle cx="${f(w * 0.5)}" cy="${f(h * 0.62)}" r="${f(m * 0.3)}" fill="none" stroke="#2d2f2a" stroke-width="${f(m * 0.05)}"/><rect x="${f(w * 0.05)}" y="${f(h * 0.08)}" width="${f(w * 0.5)}" height="${f(h * 0.25)}" rx="${f(m * 0.03)}" fill="#6c7a78"/>`; break;
+    case 'none': break;
+    case 'track': s += grad('#cfd6dc', '#e9ecef').replace(`height="${h}"`, `height="${f(h * 0.4)}"`) + `<rect x="0" y="${f(h * 0.3)}" width="${w}" height="${f(h * 0.2)}" fill="#3d4038"/>` + dots(Math.round(w * h / (m * m) * 120), h * 0.31, h * 0.49, ['#e8e2d0', C.lime, '#d9a37b', '#8a8d84', '#ffffff'], 0.008, 0.014) + `<rect x="0" y="${f(h * 0.5)}" width="${w}" height="${f(h * 0.5)}" fill="#5d5f5a"/>` + Array.from({ length: 12 }, (_, i) => `<rect x="${f(i * w / 6)}" y="${f(h * 0.52)}" width="${f(w / 12)}" height="${f(m * 0.03)}" fill="${i % 2 ? '#fff' : '#d8283a'}"/>`).join(''); break;
+    case 'wet': s += grad('#9aa1a6', '#c9cdd0').replace(`height="${h}"`, `height="${f(h * 0.45)}"`) + `<rect x="0" y="${f(h * 0.45)}" width="${w}" height="${f(h * 0.55)}" fill="#3a3c3b"/>` + Array.from({ length: 10 }, () => `<path d="M${f(R() * w)} ${f(h * (0.55 + R() * 0.4))}h${f(w * 0.2)}" stroke="#8d949a" stroke-width="${f(m * 0.01)}" opacity=".5"/>`).join(''); break;
     default: s += rect('#ccc');
   }
+  return s;
+}
+
+
+// --- scenes without the character: a cartoon race car (side / front) and a bare helmet ----------------
+// Car in its own space: side view 0..1000 wide with the ground at y = 0; front view -470..470 wide.
+function carSide() {
+  let s = `<ellipse cx="520" cy="4" rx="480" ry="22" fill="#000" opacity=".25"/>`;
+  s += `<rect x="30" y="-292" width="95" height="36" rx="6" fill="${C.dark}"/><rect x="30" y="-292" width="18" height="150" fill="#111"/><path d="M95 -256L130 -150" stroke="#111" stroke-width="12"/>`;
+  s += `<path d="M70 -60L70 -172Q140 -202 260 -192L430 -252L520 -252L560 -178L700 -152Q820 -122 960 -72L985 -50L70 -50Z" fill="${C.dark}"/>`;
+  s += `<path d="M250 -192L430 -252L440 -200Z" fill="#33372b"/>`;
+  s += `<path d="M280 -122L640 -122L700 -92L280 -92Z" fill="${C.lime}"/><path d="M720 -130Q840 -104 950 -70L930 -62Q830 -92 715 -112Z" fill="${C.lime}"/>`;
+  s += `<text x="350" y="-148" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="64" fill="${C.white}">7</text>`;
+  s += `<circle cx="560" cy="-202" r="42" fill="${C.lime}"/><rect x="566" y="-214" width="40" height="18" rx="8" fill="${C.black}"/>`;
+  s += `<path d="M470 -178Q540 -248 640 -168" stroke="#111" stroke-width="14" fill="none" stroke-linecap="round"/>`;
+  s += `<rect x="90" y="-44" width="840" height="20" fill="#111"/>`;
+  s += `<path d="M880 -42H1000V-22H860Z" fill="${C.lime}"/><rect x="985" y="-70" width="15" height="50" fill="#111"/>`;
+  for (const [x, r] of [[190, 102], [800, 96]]) s += `<circle cx="${x}" cy="${-r}" r="${r}" fill="#141414"/><circle cx="${x}" cy="${-r}" r="${r * 0.55}" fill="#3b3d38"/><circle cx="${x}" cy="${-r}" r="${r * 0.18}" fill="${C.lime}"/><path d="M${x - r * 0.8} ${-r}h${r * 0.25}" stroke="#2b2b2b" stroke-width="6"/>`;
+  return s;
+}
+function carFront() {
+  let s = `<ellipse cx="0" cy="4" rx="470" ry="24" fill="#000" opacity=".25"/>`;
+  s += `<rect x="-260" y="-410" width="520" height="42" rx="6" fill="${C.dark}"/><rect x="-270" y="-410" width="22" height="130" fill="#111"/><rect x="248" y="-410" width="22" height="130" fill="#111"/>`;
+  s += `<path d="M-62 -335L62 -335L92 -222L-92 -222Z" fill="${C.dark}"/><ellipse cx="0" cy="-305" rx="30" ry="18" fill="#0b0b0b"/>`;
+  s += `<path d="M-300 -200Q-200 -232 -90 -232L90 -232Q200 -232 300 -200L300 -92L-300 -92Z" fill="${C.dark}"/>`;
+  s += `<path d="M-300 -150L-150 -170V-140L-300 -125ZM300 -150L150 -170V-140L300 -125Z" fill="${C.lime}"/>`;
+  s += `<path d="M-300 -150L-420 -120M-300 -110L-420 -80M300 -150L420 -120M300 -110L420 -80" stroke="#1a1a1a" stroke-width="9"/>`;
+  s += `<circle cx="0" cy="-252" r="50" fill="${C.lime}"/><rect x="-36" y="-266" width="72" height="22" rx="10" fill="${C.black}"/>`;
+  s += `<path d="M-112 -232Q0 -335 112 -232M0 -300V-236" stroke="#111" stroke-width="18" fill="none" stroke-linecap="round"/>`;
+  s += `<path d="M-42 -100L42 -100L24 -40L-24 -40Z" fill="${C.dark}"/><path d="M-24 -52L24 -52L22 -40L-22 -40Z" fill="${C.lime}"/>`;
+  s += `<text x="0" y="-62" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="34" fill="${C.white}">7</text>`;
+  s += `<path d="M-430 -74H430V-58H-430Z" fill="#111"/><path d="M-440 -52H440L460 -12H-460Z" fill="${C.lime}"/>`;
+  for (const x of [-390, 390]) s += `<rect x="${x - 80}" y="-236" width="160" height="236" rx="34" fill="#141414"/>` + [0, 1, 2, 3].map((i) => `<path d="M${x - 70} ${-200 + i * 50}h140" stroke="#2c2c2c" stroke-width="8"/>`).join('');
+  return s;
+}
+function scene(sp, w, h, R) {
+  const m = Math.min(w, h);
+  let s = '';
+  if (sp.scene === 'helmetOnly') {
+    const r = m * 0.34 * (sp.k || 1);
+    s += `<ellipse cx="${f(w / 2)}" cy="${f(h / 2 + r * 1.02)}" rx="${f(r * 0.9)}" ry="${f(r * 0.1)}" fill="#000" opacity=".22"/>`;
+    s += helmetShape(w / 2, h / 2, r, 'side', sp.hv, sp.hc);
+    return s;
+  }
+  const side = sp.scene === 'carSide';
+  const k = (sp.k || 1) * (side ? (w * 0.9) / 1000 : (w * 0.86) / 940);
+  const gx = side ? w / 2 - 500 * k : w / 2, gy = h * (0.74 + (sp.y || 0));
+  if (sp.spray) for (let i = 0; i < 14; i++) s += `<ellipse cx="${f(gx + (R() - 0.5) * 900 * k)}" cy="${f(gy - R() * 260 * k)}" rx="${f((80 + R() * 160) * k)}" ry="${f((40 + R() * 70) * k)}" fill="#e9eef2" opacity="${(0.25 + R() * 0.35).toFixed(2)}" filter="url(#soft)"/>`;
+  s += `<g transform="translate(${f(gx)} ${f(gy)}) scale(${k.toFixed(4)})">${side ? carSide() : carFront()}</g>`;
+  if (sp.speed) for (let i = 0; i < 18; i++) { const y = gy - R() * 330 * k; s += `<path d="M${f(R() * w * 0.4)} ${f(y)}h${f(w * (0.2 + R() * 0.4))}" stroke="#ffffff" stroke-width="${f(m * 0.006)}" opacity=".55" stroke-linecap="round"/>`; }
   return s;
 }
 
@@ -401,7 +454,7 @@ function render(sp, w, h, seed) {
     const print = `<clipPath id="pr"><rect x="${f(px)}" y="${f(py)}" width="${f(pw)}" height="${f(ph)}"/></clipPath><rect x="${f(px)}" y="${f(py)}" width="${f(pw)}" height="${f(ph)}" fill="${C.dark}"/><g clip-path="url(#pr)"><g transform="translate(${f(cx)} ${f(py + 1080 * k)}) scale(${k.toFixed(4)})">${character({ outfit: 'suit', helmet: true, pose: 'pointUp', hc: [C.gold, C.dark] })}</g></g>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#f1f1ee"/><path d="${tee}" fill="#fbfbf8" stroke="#d9d9d2" stroke-width="${f(m * 0.006)}"/>${print}</svg>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${filter}<filter id="lift" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity=".28"/></filter></defs><g${filter ? ' filter="url(#tint)"' : ''}>${background(sp, w, h, R)}<g transform="translate(${f(tx)} ${f(ty)}) scale(${s.toFixed(4)})${flip}" filter="url(#lift)">${character(sp)}</g></g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${filter}<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter><filter id="lift" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity=".28"/></filter></defs><g${filter ? ' filter="url(#tint)"' : ''}>${background(sp, w, h, R)}${sp.scene ? scene(sp, w, h, R) : `<g transform="translate(${f(tx)} ${f(ty)}) scale(${s.toFixed(4)})${flip}" filter="url(#lift)">${character(sp)}</g>`}${sp.title ? `<text x="${f(w / 2)}" y="${f(h * 0.93)}" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="${f(h * 0.085)}" textLength="${f(w * 0.86)}" lengthAdjust="spacingAndGlyphs" fill="#fff" stroke="${C.dark}" stroke-width="${f(h * 0.008)}" paint-order="stroke">${sp.title}</text>` : ''}</g></svg>`;
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -500,6 +553,50 @@ const SPECS = [
   ['ln-360-helm-1.webp', 1560, 1276, { bg: 'studio', c1: '#6b6e66', c2: '#4b4e47', outfit: 'swirl', helmet: true, frame: 'close' }],
   ['ln4-hp-lando-helmet.webp', 834, 1984, { bg: 'studio', c1: '#6b6e66', c2: '#4b4e47', outfit: 'swirl', helmet: true, view: 'side', frame: 'close' }],
   ['lando-store-gold-1.webp', 455, 582, { bg: 'teeprint' }],
+  // race results (calendar / results pages): the hover photo of each race
+  ['LandoDutchGP24.webp', 400, 500, { bg: 'podium', c1: '#c8202f', outfit: 'suit', hat: 'cap', pose: 'trophyUp', prop: 'trophy', face: 'grin' }],
+  ['LandoChina25.webp', 400, 500, { scene: 'carSide', bg: 'track', speed: true, k: 1.6, y: -0.05 }],
+  ['LandoJapan25.webp', 400, 500, { scene: 'carFront', bg: 'cockpit', k: 1.9, y: 0.2 }],
+  ['LandoBah25.webp', 400, 500, { bg: 'podium', c1: '#2a2140', outfit: 'suit', pose: 'armsUp', frame: 'full', face: 'shout' }],
+  ['LandoSaudi25.webp', 400, 500, { bg: 'night', outfit: 'jacket', face: 'neutral' }],
+  ['LandoMiami25.webp', 400, 500, { bg: 'crowd', outfit: 'suit', view: 'back', pose: 'wave', frame: 'full' }],
+  ['LandoImola25.webp', 400, 500, { bg: 'podium', c1: '#1b2b55', outfit: 'suit', hat: 'cap', pose: 'holdSide', prop: 'trophy', face: 'smile' }],
+  ['LandoSpain25.webp', 400, 500, { bg: 'studio', c1: '#dfe3e8', outfit: 'suit', hat: 'cap', pose: 'wave', face: 'grin' }],
+  ['LandoCanada25.webp', 400, 500, { scene: 'carFront', bg: 'night', k: 1.4 }],
+  ['LandoAustria25Win.webp', 400, 500, { bg: 'podium', c1: '#b8202c', outfit: 'suit', hat: 'cap', pose: 'trophyUp', prop: 'trophy', face: 'grin' }],
+  ['lando - hover image - belg 2025.webp', 800, 1000, { scene: 'carSide', bg: 'track', k: 0.95 }],
+  ['lando - hover image - hungary 2025.webp', 800, 1000, { bg: 'podium', c1: '#2b3f7a', outfit: 'suit', pose: 'trophyUp', prop: 'trophy', face: 'shout' }],
+  ['DutchGP25.webp', 800, 1000, { scene: 'carFront', bg: 'track', k: 0.8 }],
+  ['lando - hover image - italy 2025.webp', 800, 1000, { bg: 'studio', c1: '#e8702a', c2: '#c85a1a', outfit: 'suit', frame: 'close', face: 'neutral' }],
+  ['lando - hover image - az 2026.webp', 800, 1000, { scene: 'carFront', bg: 'garage', k: 1.5, y: 0.05 }],
+  ['hover-image-singapore.webp', 563, 654, { bg: 'crowd', outfit: 'suit', hat: 'cap', hatColor: '#c2185b', frame: 'close', face: 'smile' }],
+  ['hover-image-austin.webp', 563, 654, { bg: 'studio', c1: '#e03a4a', c2: '#b8202c', outfit: 'suitWhite', helmet: true, view: 'side', frame: 'close' }],
+  ['hover-image-mexico.webp', 563, 654, { bg: 'podium', c1: '#2f5a3a', outfit: 'suitWhite', hat: 'cap', pose: 'holdSide', prop: 'trophy', face: 'grin' }],
+  ['hover-image-vegas.webp', 563, 654, { bg: 'night', outfit: 'suit', helmet: true, pose: 'handOnHead', frame: 'half' }],
+  ['lando - hover image - qatar 2025.webp', 800, 1000, { scene: 'carSide', bg: 'track', k: 0.85 }],
+  ['lando - hover image - abu 2026.webp', 800, 1000, { bg: 'studio', c1: '#f08a24', c2: '#d8661a', outfit: 'suit', pose: 'pointUp', face: 'grin', title: 'WORLD CHAMPION', y: -0.04 }],
+  // pre-series career (On Track) and the wet-track car shots
+  ['pre-f1-car-img.webp', 814, 914, { bg: 'podium', c1: '#dfe3e8', outfit: 'sport', view: 'back', pose: 'holdSide', prop: 'bottle' }],
+  ['ln-f1-car-img-2.webp', 815, 915, { bg: 'podium', c1: '#e9ecef', outfit: 'suitWhite', hat: 'cap', pose: 'armsUp', frame: 'full', face: 'shout' }],
+  ['ln-on-t-horiz-2.webp', 655, 657, { scene: 'carFront', bg: 'wet', spray: true, k: 0.95 }],
+  ['ln4-menu-img-5.webp', 736, 900, { scene: 'carFront', bg: 'wet', spray: true, k: 0.95 }],
+  // helmets hall of fame: the product shot of each helmet, on transparent ground like the originals
+  ['In-helm-2025-Season-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: [C.dark, C.lime] }],
+  ['In-helm-2025-Discoball-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hv: 'disco' }],
+  ['In-helm-2025-DarkGlitter-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#15161a', '#9dff4a'] }],
+  ['In-helm-2024-Season-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: [C.lime, C.dark] }],
+  ['In-helm-2024-Porcelain-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#f4f4f0', '#2d5bd6'] }],
+  ['In-helm-2024-Japan-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#f4f4f0', '#d8283a'] }],
+  ['In-helm-2024-GIF Helmet-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: [C.lime, '#ff5fb0'] }],
+  ['In-helm-2024-DarkMode-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#121212', C.lime] }],
+  ['In-helm-2023-Race 100-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#f6c93a', '#e4402f'] }],
+  ['In-helm-2023-Las Vegas-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#efe4cc', C.gold] }],
+  ['In-helm-2023-Chrome-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#b9c0c8', '#38c7c0'] }],
+  ['In-helm-2023-Beach Ball-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#f4f4f0', '#e0343f'] }],
+  ['In-helm-2022-Basketball-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#e2702a', '#1a1a1a'] }],
+  ['ln-helm-2021-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: [C.lime, '#2a55d6'] }],
+  ['In-helm-2020-Silverstone-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#f4f4f0', '#2bb6b0'] }],
+  ['In-helm-2019-base.webp', 823, 823, { scene: 'helmetOnly', bg: 'none', hc: ['#2a55d6', C.lime] }],
 ];
 
 // ---------------------------------------------------------------------------------------------------
