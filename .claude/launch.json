@@ -26,6 +26,20 @@
         "3000"
       ],
       "port": 3000
+    },
+    {
+      "name": "vite-characters",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/bksoft/Desktop/soty-study-characters",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5174"
+      ],
+      "port": 5174
     }
   ]
 }
